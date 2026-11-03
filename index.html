@@ -1,0 +1,1380 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="color-scheme" content="light">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>FIN | Open Source Procurement Toolkit</title>
+<meta name="description" content="Institutional assessment of research software and hardware. Repository evidence is fetched automatically; judgment stays with people.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Space+Grotesk:wght@500;600&display=swap">
+<style>
+/* Layout: a quiet institutional form. One wide column; the case view splits into a sticky summary rail and a long questionnaire. */
+:root{
+  color-scheme:light;
+  --bg:#f5f6f9; --surface:#ffffff; --surface-2:#e9ecf2; --fg:#1b2130; --muted:#4f5869; --line:#cfd4df; --line-strong:#7f879b;
+  --accent:#2a4a8b; --accent-ink:#ffffff; --accent-soft:#e3e9f6; --accent-soft-ink:#1f3a70;
+  --ok:#1f6b3d; --ok-soft:#e3f2e8; --warn:#875012; --warn-soft:#f8edd8; --bad:#9f2f22; --bad-soft:#f8e3df; --info:#2b5a7d; --info-soft:#e2ecf4;
+  --display:"Space Grotesk","IBM Plex Sans",system-ui,sans-serif; --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif; --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --r:10px; --rail:300px;
+}
+
+*{box-sizing:border-box} html{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.55 var(--body);-webkit-font-smoothing:antialiased}
+a{color:var(--accent)} a:hover{text-decoration-thickness:2px}
+h1,h2,h3,h4{font-family:var(--display);font-weight:600;line-height:1.15;margin:0;text-wrap:balance;letter-spacing:-.01em}
+h1{font-size:clamp(28px,4vw,40px)} h2{font-size:22px} h3{font-size:17px} h4{font-size:15px;font-family:var(--body);font-weight:600}
+p{margin:0} .muted{color:var(--muted)} .small{font-size:13px} .mono{font-family:var(--mono);font-size:12.5px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+[hidden]{display:none!important}
+.sr{position:absolute;left:-9999px}
+
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0}
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);border-bottom:1px solid var(--line)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--bg)}
+header.top .wrap{display:flex;align-items:center;gap:18px;min-height:58px;flex-wrap:wrap;padding-block:8px}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit;font-family:var(--display);font-weight:600}
+.brand .mark{width:30px;height:30px;border-radius:7px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-family:var(--mono);font-size:12px;letter-spacing:.05em}
+.brand .ver{font:11px var(--mono);color:var(--muted);letter-spacing:.1em;margin-left:4px}
+nav.main{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap}
+nav.main a{padding:7px 11px;border-radius:7px;text-decoration:none;color:var(--muted);font-weight:500}
+nav.main a[aria-current="page"]{background:var(--accent-soft);color:var(--accent-soft-ink)}
+
+main{padding-block:28px 64px}
+.view{display:grid;gap:22px}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:20px}
+.card.tight{padding:14px 16px}
+.stack{display:grid;gap:12px} .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+
+.btn{display:inline-flex;align-items:center;gap:8px;padding:9px 14px;border-radius:8px;border:1px solid var(--line-strong);background:var(--surface);font-weight:500;text-decoration:none;color:inherit;line-height:1.2}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.small{padding:6px 10px;font-size:13px} .btn.ghost{border-color:transparent;background:transparent;color:var(--accent)}
+.btn:disabled{opacity:.55;cursor:default}
+.btn.danger{color:var(--bad)}
+
+label.field{display:grid;gap:6px;font-size:13.5px;font-weight:500}
+label.field span.hint{font-weight:400;color:var(--muted)}
+input[type=text],input[type=url],input[type=password],input[type=date],select,textarea{width:100%;padding:9px 11px;border:1px solid var(--line-strong);border-radius:8px;background:var(--surface);min-width:0}
+textarea{min-height:72px;resize:vertical}
+.check{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);font-size:14px}
+.check input{margin-top:3px;flex:none}
+.check b{font-weight:600} .check .why{display:block;color:var(--muted);font-size:13px}
+fieldset{border:0;padding:0;margin:0;min-width:0}
+.seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:8px;overflow:hidden;flex-wrap:wrap}
+.seg label{padding:7px 12px;cursor:pointer;font-size:13.5px;border-right:1px solid var(--line);display:flex;gap:6px;align-items:center;background:var(--surface)}
+.seg label:last-child{border-right:0}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg label:has(input:checked){background:var(--accent-soft);color:var(--accent-soft-ink);font-weight:600}
+.seg label:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:-2px}
+
+.pill{display:inline-flex;align-items:center;gap:6px;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:600;line-height:1.6;border:1px solid transparent}
+.pill.ok{background:var(--ok-soft);color:var(--ok)} .pill.warn{background:var(--warn-soft);color:var(--warn)} .pill.bad{background:var(--bad-soft);color:var(--bad)} .pill.info{background:var(--info-soft);color:var(--info)} .pill.neutral{background:var(--surface-2);color:var(--muted)}
+.pill.outline{background:transparent;border-color:var(--line-strong);color:var(--muted)}
+.chip{display:inline-flex;align-items:center;gap:4px;font:11.5px var(--mono);padding:1px 7px;border-radius:5px;border:1px solid var(--line);color:var(--muted);background:var(--surface-2);cursor:help}
+.chip.M{border-color:var(--accent);color:var(--accent-soft-ink);background:var(--accent-soft)} .chip.E{border-color:var(--info);color:var(--info);background:var(--info-soft)} .chip.U{border-style:dashed}
+
+/* stage header strip */
+.pathway{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.pathway .step{padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);display:grid;gap:3px;min-width:0;text-decoration:none;color:inherit}
+.pathway .step .n{font:11px var(--mono);color:var(--muted)} .pathway .step b{font-family:var(--display);font-weight:600;font-size:14px;line-height:1.2}
+.pathway .step .prog{height:4px;border-radius:2px;background:var(--surface-2);overflow:hidden;margin-top:4px} .pathway .step .prog i{display:block;height:100%;background:var(--accent)}
+@media (max-width:760px){ .pathway{grid-template-columns:repeat(2,minmax(0,1fr))} .pathway .step:last-child{grid-column:span 2} }
+
+/* case layout */
+.case{display:grid;grid-template-columns:var(--rail) minmax(0,1fr);gap:22px;align-items:start}
+.rail{position:sticky;top:calc(env(safe-area-inset-top,0px) + 70px);display:grid;gap:14px;max-height:calc(100vh - 90px);overflow:auto}
+@media (max-width:900px){ .case{grid-template-columns:1fr} .rail{position:static;max-height:none} }
+.rail .k{display:flex;justify-content:space-between;gap:10px;font-size:13.5px;padding:6px 0;border-bottom:1px solid var(--line)} .rail .k:last-child{border-bottom:0}
+.rail .k b{font-weight:500;text-align:right;min-width:0;overflow-wrap:anywhere}
+
+.stage{display:grid;gap:14px;scroll-margin-top:90px}
+.stage-head{display:grid;gap:4px;padding:6px 0 0}
+.stage-head .who{font-size:13px;color:var(--muted)}
+.domain{display:grid;gap:10px}
+.domain h4{color:var(--muted);font-family:var(--mono);font-weight:500;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;padding-top:6px}
+
+.q{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;display:grid;gap:10px;border-left:4px solid var(--line)}
+.q[data-v="yes"]{border-left-color:var(--ok)} .q[data-v="partial"]{border-left-color:var(--warn)} .q[data-v="no"]{border-left-color:var(--bad)} .q[data-v="na"]{border-left-color:var(--line-strong)}
+.q .qh{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.q .qid{font:12px var(--mono);color:var(--muted);min-width:34px} .q .qt{font-weight:600;font-size:15px;flex:1 1 300px;min-width:0}
+.q .srcs{display:flex;gap:4px;flex-wrap:wrap}
+.q .help{font-size:13px;color:var(--muted)}
+.ev{display:grid;gap:4px;border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--bg)}
+.ev .evi{display:flex;gap:8px;align-items:flex-start;font-size:13.5px;min-width:0}
+.ev .dot{flex:none;width:16px;height:16px;border-radius:50%;margin-top:3px;background:var(--surface-2);color:var(--muted);display:grid;place-items:center;font:700 10px var(--mono);line-height:1}
+.ev .dot::before{content:"·"} .ev .dot.ok::before{content:"✓"} .ev .dot.bad::before{content:"✗"} .ev .dot.mixed::before{content:"~"}
+.ev .dot.ok{background:var(--ok);color:#fff} .ev .dot.bad{background:var(--bad);color:#fff} .ev .dot.mixed{background:var(--warn);color:#fff}
+.ev .evl{color:var(--muted);flex:0 0 auto;max-width:45%} .ev .evv{min-width:0;overflow-wrap:anywhere} .ev .evs{font:11px var(--mono);color:var(--muted);margin-left:auto;flex:none}
+.ev .evcap{font-size:12px;color:var(--muted);padding-top:4px;border-top:1px dashed var(--line);margin-top:4px}
+.suggest{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.q .ans{display:grid;gap:8px}
+.q textarea{min-height:44px}
+.q .note-label{font-size:12.5px;color:var(--muted)}
+.specialist{font-size:12px;color:var(--info)}
+
+.route{display:grid;gap:10px}
+.route .big{font-family:var(--display);font-size:20px;font-weight:600;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.route ul{margin:0;padding-left:18px;font-size:13.5px;display:grid;gap:4px}
+.route li .kind{font:11px var(--mono);color:var(--muted);margin-right:6px}
+
+.cases{display:grid;gap:8px}
+.cases a.item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 14px;align-items:center;padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:var(--surface);text-decoration:none;color:inherit}
+.cases a.item:hover{border-color:var(--accent)}
+.cases .nm{font-weight:600;font-family:var(--display)} .cases .mt{font-size:12.5px;color:var(--muted);overflow-wrap:anywhere}
+
+table{border-collapse:collapse;width:100%;font-size:13.5px} th,td{text-align:left;vertical-align:top;padding:7px 8px;border-bottom:1px solid var(--line)} th{font-weight:600;font-size:12.5px;color:var(--muted)}
+.tablewrap{overflow-x:auto}
+.num{font-variant-numeric:tabular-nums}
+
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:8px;font-size:14px;z-index:50;box-shadow:0 6px 24px rgba(0,0,0,.18)}
+.log{font:12.5px/1.5 var(--mono);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px 12px;max-height:160px;overflow:auto;white-space:pre-wrap}
+details.src{border-top:1px solid var(--line);padding:10px 0} details.src summary{cursor:pointer;font-weight:600;font-family:var(--display)} details.src p{font-size:13.5px;color:var(--muted);padding-top:4px}
+
+.report{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:28px;display:grid;gap:22px;max-width:900px}
+.report h2{font-size:18px;border-bottom:1px solid var(--line);padding-bottom:6px}
+.report .kv{display:grid;grid-template-columns:max-content 1fr;gap:4px 16px;font-size:13.5px} .report .kv dt{color:var(--muted)} .report .kv dd{margin:0;overflow-wrap:anywhere}
+.v{font:12px var(--mono);padding:1px 6px;border-radius:4px;white-space:nowrap} .v.yes{background:var(--ok-soft);color:var(--ok)} .v.partial{background:var(--warn-soft);color:var(--warn)} .v.no{background:var(--bad-soft);color:var(--bad)} .v.na{background:var(--surface-2);color:var(--muted)} .v.unset{border:1px dashed var(--line-strong);color:var(--muted)}
+
+
+/* ---- simplified interface ---- */
+.hero{display:grid;gap:14px;max-width:760px;padding-block:18px 8px}
+.hero .lead{font-size:16.5px;max-width:62ch}
+.roles{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;padding-block:6px}
+.role{display:grid;gap:6px;padding:18px 20px;border:1px solid var(--line-strong);border-radius:var(--r);background:var(--surface);text-decoration:none;color:inherit}
+.role:hover{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.role b{font-family:var(--display);font-size:20px;font-weight:600}
+.start{display:flex;gap:8px;flex-wrap:wrap}
+.start input{flex:1 1 320px;padding:13px 14px;font-size:16px;border-radius:10px}
+.btn.big{padding:13px 20px;font-size:16px;border-radius:10px}
+.howto{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;max-width:980px}
+.howto .step{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+.howto .n{flex:none;width:26px;height:26px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font:600 13px var(--mono)}
+.howto b{font-family:var(--display);font-weight:600;display:block;margin-bottom:2px}
+
+.formv{display:grid;gap:18px;max-width:900px}
+.casehead{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap}
+.qcard{display:grid;gap:10px;padding:20px 22px}
+.qcard h3{font-size:19px}
+.qcard .hint{font-weight:400;color:var(--muted);font-size:13.5px;line-height:1.5}
+.qcard label.field{gap:6px}
+.draft{font-weight:400;font-size:12.5px;color:var(--info)}
+.checks{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px}
+.check input{margin-top:2px}
+.evd{border:1px solid var(--line);border-radius:8px;padding:8px 12px;background:var(--bg)}
+.evd summary{cursor:pointer;font-size:13.5px;font-weight:500}
+.evd .ev{border:0;padding:8px 0 0;background:transparent}
+
+.glance{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+@media (max-width:640px){ .glance{grid-template-columns:repeat(2,minmax(0,1fr))} }
+.urlfield{grid-column:1 / -1} .urlfield .row{flex-wrap:nowrap} .urlfield .btn{white-space:nowrap;flex:none}
+.tile{display:grid;gap:3px;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);min-width:0}
+.tile .tl{font:11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.tile .tv{font-family:var(--display);font-weight:600;font-size:17px;line-height:1.2;overflow-wrap:anywhere}
+.tile .ts{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600}
+.tile .ts i{width:14px;height:14px;border-radius:50%;background:var(--line-strong);flex:none;color:#fff;font:700 9px var(--mono);display:grid;place-items:center;font-style:normal}
+.tile.ok .ts i::before{content:"✓"} .tile.warn .ts i::before{content:"!"} .tile.bad .ts i::before{content:"✗"}
+.tile.ok .ts{color:var(--ok)} .tile.ok .ts i{background:var(--ok)} .tile.warn .ts{color:var(--warn)} .tile.warn .ts i{background:var(--warn)} .tile.bad .ts{color:var(--bad)} .tile.bad .ts i{background:var(--bad)} .tile.none .ts{color:var(--muted)}
+.tile .tsub{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+
+.banner{padding:12px 16px;border-radius:var(--r);border:1px solid var(--line);background:var(--surface);font-size:14px;line-height:1.5}
+.banner b{font-family:var(--display);font-weight:600;display:block;margin-bottom:2px;font-size:15px}
+.banner.route-light{border-color:var(--ok);background:var(--ok-soft)} .banner.route-extended{border-color:var(--warn);background:var(--warn-soft)} .banner.route-clarify,.banner.info{border-color:var(--info);background:var(--info-soft)} .banner.warn{border-color:var(--warn);background:var(--warn-soft)}
+
+.listbar{padding:4px 0}
+.seg.small label{padding:5px 10px;font-size:13px}
+.stage{gap:8px} .stage-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;padding-top:14px}
+.qlist{display:grid;gap:4px}
+.qr{background:var(--surface);border:1px solid var(--line);border-radius:8px}
+.qr.open{border-color:var(--line-strong)}
+.qrow{display:grid;grid-template-columns:26px minmax(0,1fr) auto 16px;gap:10px;align-items:center;padding:8px 10px;cursor:pointer}
+.qrow:hover{background:var(--bg)}
+.st{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font:600 13px var(--mono);border:1px solid var(--line-strong);color:var(--muted);background:var(--surface)}
+.st.yes{background:var(--ok);border-color:var(--ok);color:#fff} .st.partial{background:var(--warn);border-color:var(--warn);color:#fff} .st.no{background:var(--bad);border-color:var(--bad);color:#fff} .st.na{background:var(--surface-2);color:var(--muted)}
+.st.sug{background:transparent;border-style:dashed} .st.yes.sug{color:var(--ok)} .st.partial.sug{color:var(--warn)} .st.no.sug{color:var(--bad)}
+.qtxt{display:grid;gap:1px;min-width:0;font-size:14px;line-height:1.35}
+.qtxt .qid{font:11px var(--mono);color:var(--muted);margin-right:6px}
+.qev{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tenref{font:11px var(--mono);color:var(--accent-soft-ink);background:var(--accent-soft);padding:0 5px;border-radius:4px;margin-right:6px}
+.vbtns{display:inline-flex;gap:3px}
+.vb{width:28px;height:28px;border-radius:6px;border:1px solid var(--line);background:var(--surface);font:600 13px var(--mono);color:var(--muted)}
+.vb:hover{border-color:var(--line-strong)}
+.vb.on.yes{background:var(--ok);border-color:var(--ok);color:#fff} .vb.on.partial{background:var(--warn);border-color:var(--warn);color:#fff} .vb.on.no{background:var(--bad);border-color:var(--bad);color:#fff}
+.caret{color:var(--muted);transition:transform .15s} .qr.open .caret{transform:rotate(180deg)}
+.qdetail{display:grid;gap:10px;padding:4px 12px 14px 46px;border-top:1px solid var(--line)}
+@media (max-width:640px){ .qrow{grid-template-columns:26px minmax(0,1fr) 16px} .vbtns{grid-column:2;justify-self:start} .qdetail{padding-left:12px} .qev{white-space:normal} }
+.areas{display:grid;gap:12px}
+.gaps{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:8px}
+.gap .why{font-size:12.5px}
+.area{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--line);border-radius:var(--r);padding:16px 18px;display:grid;gap:10px}
+.area.ok{border-left-color:var(--ok)} .area.followup{border-left-color:var(--warn)} .area.refer{border-left-color:var(--info)} .area.na{border-left-color:var(--line-strong)}
+.ahead{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;flex-wrap:wrap}
+.ahead h3{font-size:17px}
+.sig{display:flex;align-items:center;gap:6px;font-weight:500} .sig i{width:14px;height:14px;border-radius:50%;background:var(--line-strong);flex:none;color:#fff;font:700 9px var(--mono);display:grid;place-items:center;font-style:normal} .sig.ok i::before{content:"✓"} .sig.warn i::before{content:"!"} .sig.bad i::before{content:"✗"} .sig.ok{color:var(--ok)} .sig.ok i{background:var(--ok)} .sig.warn{color:var(--warn)} .sig.warn i{background:var(--warn)} .sig.bad{color:var(--bad)} .sig.bad i{background:var(--bad)}
+.xwl{margin:6px 0 0;padding-left:18px;display:grid;gap:2px;color:var(--muted)}
+.v.ok{background:var(--ok-soft);color:var(--ok)} .v.followup{background:var(--warn-soft);color:var(--warn)} .v.refer{background:var(--info-soft);color:var(--info)}
+.ten{display:grid;gap:10px;margin:0} .ten dt{font-weight:600;font-size:14px} .ten dd{margin:0 0 6px;font-size:13.5px;white-space:pre-wrap}
+.v.sug{border:1px dashed currentColor;background:transparent}
+
+@media print{
+  header.top,.rail,.noprint,nav{display:none!important} body{background:#fff;color:#000;font-size:12px} .report{border:0;padding:0;max-width:none} .wrap{max-width:none;padding:0} main{padding:0}
+  .v,.pill{border:1px solid #999!important;background:#fff!important;color:#000!important} a{color:#000;text-decoration:none}
+  .report .page-break{break-before:page}
+}
+@media (prefers-reduced-motion:no-preference){ .btn,.q{transition:border-color .15s} }
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <a class="brand" href="#home"><span class="mark">FIN</span><span>Open Source Procurement Toolkit</span><span class="ver">V7</span></a>
+  <nav class="main" aria-label="Sections">
+    <a href="#home" data-nav="home">Assessment</a>
+    <a href="#about" data-nav="about">About</a>
+    <a href="#sources" data-nav="sources">Sources</a>
+  </nav>
+</div></header>
+<main><div class="wrap"><div id="app" class="view" aria-live="polite"></div></div></main>
+<script>
+// ---------- Source frameworks (from "Sources and reading key") ----------
+const SOURCES = {
+  HEOSAT:   {name:"HEOSAT", full:"Apereo — Higher Education Open Source Assessment Toolkit (2026.07)", url:"https://www.apereo.org/HEOSAT", scope:"Explicit methodological candidate"},
+  CHAOSS:   {name:"CHAOSS viability", full:"CHAOSS — Practitioner Guide: Viability; Compliance+Security, Governance and Strategy metric models", url:"https://www.chaoss.community/practitioner-guide-viability/", scope:"Explicit methodological candidate"},
+  OPENSSF:  {name:"OpenSSF evaluation guide", full:"OpenSSF — Concise Guide for Evaluating Open Source Software (28 March 2025)", url:"https://best.openssf.org/Concise-Guide-for-Evaluating-Open-Source-Software.html", scope:"Prototype reference"},
+  OSOR:     {name:"OSOR", full:"European Commission / OSOR — Public procurement of open source software", url:"https://interoperable-europe.ec.europa.eu/collection/open-source-observatory-osor/public-procurement-open-source-software", scope:"Prototype reference"},
+  IDB:      {name:"IDB procurement", full:"Pinto Bernal et al., IDB (2025) — Open-Source Software Procurement, Technical Note IDB-TN-3090", url:"https://publications.iadb.org/en/open-source-software-procurement", scope:"Prototype reference"},
+  HECVAT:   {name:"HECVAT", full:"EDUCAUSE / Internet2 / REN-ISAC — Higher Education Community Vendor Assessment Toolkit 4.1.6", url:"https://www.educause.edu/higher-education-community-vendor-assessment-toolkit", scope:"Full workbook not inspected; only public ITAC references verified"},
+  OPENCHAIN:{name:"OpenChain", full:"OpenChain — License Compliance Specification 2.1 (ISO/IEC 5230:2020) and Security Assurance Specification (ISO/IEC 18974:2023)", url:"https://openchainproject.org/resources", scope:"Two standards unpacked analytically"},
+  GITHUB:   {name:"GitHub metadata", full:"GitHub REST API — community profile metrics and repository metadata", url:"https://docs.github.com/en/rest/metrics/community", scope:"Evidence tool; not an applicant questionnaire"},
+  SCORECARD:{name:"OpenSSF Scorecard", full:"OpenSSF Scorecard — automated repository checks", url:"https://github.com/ossf/scorecard/blob/main/docs/checks.md", scope:"Automated signals; not procurement approval"},
+  OSBA:     {name:"OSBA", full:"Open Source Business Alliance, Procurement WG (Feb 2025) — Selection criteria for the sustainable procurement of Open Source Software", url:"https://osb-alliance.de/publikationen/veroeffentlichungen/selection-criteria-for-the-sustainable-procurement-of-open-source-software", scope:"Earlier FIN comparator"},
+  CERN:     {name:"CERN hardware model", full:"Mercado-Lara / Wilson Center (2025) — CERN case and conceptual framework", url:"https://www.wilsoncenter.org/publication/advancing-open-science-hardware-opportunities-and-challenges-us-government-procurement", scope:"Institutional case, not universal questionnaire"},
+  GOSH:     {name:"GOSH TTO brief", full:"Arancio & Molloy (2021) — GOSH policy brief for university technology transfer offices", url:"https://zenodo.org/records/5094999", scope:"Policy brief, not applicant questionnaire"},
+  WILSON:   {name:"Wilson Center hardware research", full:"Mercado-Lara / Wilson Center (2025) — Advancing Open Science Hardware: US Government Procurement", url:"https://www.wilsoncenter.org/publication/advancing-open-science-hardware-opportunities-and-challenges-us-government-procurement", scope:"Research framework, not validated approval scale"},
+};
+const READING_KEY = {
+  M:"Comparable criterion addressing the same decision",
+  P:"Partial or indirect overlap",
+  E:"Shared evidence / automated signal — file presence or a tool result is not a complete judgment",
+  U:"Unverified question-level coverage"
+};
+const CROSSWALK_URL = "https://docs.google.com/spreadsheets/d/1V4qxOhuM4eDrB40tYaepnn2Dt0EuLkcLTfn6vZ_-RHY/edit";
+
+// ---------- Stages of the documented pathway ----------
+const STAGES = [
+  {id:"project", n:1, name:"Researcher input",            owner:"Researcher / requester", blurb:"The research need, the transaction, and the project information. Objective signals are pre-populated from the repository; the researcher confirms or corrects them."},
+  {id:"review",  n:2, name:"Procurement review",          owner:"Procurement officer",    blurb:"Deployment context, cost, accessibility, privacy and contract blockers."},
+  {id:"provider",n:3, name:"Provider and contract review", owner:"Procurement officer with the provider", blurb:"Whether the counterparty can actually deliver source-level support."},
+  {id:"owner",   n:4, name:"Institutional ownership",     owner:"Procurement officer and unit lead", blurb:"Who owns the decision, its conditions and the review trigger."}
+];
+const DOMAINS = {
+  need:"Need and transaction", lic:"Licensing and legal", gov:"Governance", com:"Community", doc:"Documentation",
+  ops:"Operations and support", sec:"Security and risk", std:"Standards and portability", sus:"Project sustainability",
+  ctx:"Deployment context", cost:"Cost and capacity", hw:"Open hardware", contract:"Contract and handoffs", own:"Ownership"
+};
+
+// Column order in the crosswalk sheet
+const SRC_ORDER = ["HEOSAT","CHAOSS","OPENSSF","OSOR","IDB","HECVAT","OPENCHAIN","GITHUB","SCORECARD","OSBA","CERN","GOSH","WILSON"];
+const SRC_SKIP = new Set([13,14]); // crosswalk columns for FIN case methodology and FIN pilot-selection rubric, excluded from the sources
+function Q(id, q, stage, dom, cols, note, opts){ const src={}; cols.forEach((v,i)=>{ if(v && !SRC_SKIP.has(i) && SRC_ORDER[i]) src[SRC_ORDER[i]]=v; }); return Object.assign({id,q,stage,dom,src,note:note||""}, opts||{}); }
+
+// ---------- The 62 candidate-assessment questions (Q63–Q67 evaluate FIN itself and stay out of cases) ----------
+const QUESTIONS = [
+ Q("Q01","What problem and benefit justify choosing this project?","project","need",["P: AI1 value proposition","P: Strategy model","M: Necessity; Suitability","M: Needs definition","M: §III.A needs analysis","","","","","","","P: Researcher goals and mission alignment","","M: Case-specific research need",""],"HEOSAT describes the project value proposition; the buyer must still explain its own need.",{help:"State the research need in the requester's own terms. The project's pitch does not substitute for it."}),
+ Q("Q02","Is the activity reuse, paid services, or commissioned development?","project","need",["P: AI4 service options","","","M: Procurement models","M: Table 1 product/service classification","P: Vendor screening","","","","P: Supplier tender context","","","","M: Transaction and institutional handoffs",""],"Similar routing purpose. Service options, vendor screening and transaction classification are different judgments.",{help:"Filled from the intake form. Commissioned development needs a clarified scope before the route is set."}),
+ Q("Q36","Does the solution support required languages/localization?","project","need",["M: AS4 (paraphrase)","P: Inclusive communication (different object)"],""),
+ Q("Q37","Does it work on the required platforms?","project","need",["M: AS5 (paraphrase)","","M: Suitability; Practical Testing","","M: §III.A / IV.B technical fit"],""),
+ Q("Q40","Is support available to evaluate the project?","project","need",["M: AI3 (paraphrase)","","P: Practical Testing"],""),
+
+ Q("Q03","Which license applies?","project","lic",["M: LL1 (paraphrase)","M: Licenses Declared; OSI Approved Licenses","M: License Clarity","P: Rights guidance","P: §III.A / IV.B license obligations","","P: 5230 §3.1.5 obligations","E: Detected license","E: License check"],""),
+ Q("Q04","Are required license and copyright notices provided?","project","lic",["M: LL2 (paraphrase)","","","","","","M: 5230 §3.3.2 compliance artifacts"],""),
+ Q("Q05","Are dependency licenses and component obligations understood?","project","lic",["M: LL3 (paraphrase)","M: License Coverage; Upstream Code Dependencies","M: License Clarity","","M: §IV.B license obligations","","M: 5230 §3.3.1–2 inventory and artifacts","","","P: Criterion 4 core dependencies"],""),
+ Q("Q06","Are contribution rights and obligations clear?","project","lic",["M: LL4 (paraphrase)","","P: License Clarity","P: Rights guidance","P: License obligations","","M: 5230 §3.5.1 contribution process"],""),
+ Q("Q07","Are trademark rights and restrictions clear?","project","lic",["M: LL5 (paraphrase)"],""),
+ Q("Q08","Who has authority to make project decisions?","project","gov",["M: GV1 (paraphrase)","P: Governance model; Organizational Influence","","","","","P: Program roles (organizational scope)","","","P: Criterion 1 upstream relationship"],""),
+ Q("Q09","Are project decisions made publicly?","project","gov",["M: GV2 (paraphrase)","P: Governance model"],""),
+ Q("Q10","Is there a maintainer succession plan?","project","gov",["M: GV3 (paraphrase)","P: Contributor/bus factor","P: Maintenance & Sustainability"],""),
+ Q("Q11","How are influence and conflicts managed?","project","gov",["M: GV4 (paraphrase)","P: Elephant Factor; Organizational Influence"],""),
+ Q("Q12","Is governance reviewed and improved?","project","gov",["M: GV5 (paraphrase)","P: Governance model"],""),
+ Q("Q13","Are project stakeholders identified and engaged?","project","com",["M: CE1 (paraphrase)","P: Community model"],""),
+ Q("Q14","Are contribution pathways clear?","project","com",["M: CE2 (paraphrase)","P: Contribution types; change requests","","","","","P: 5230 §3.5.1 contribution process","E: CONTRIBUTING file","","P: Criterion 2 upstream modifications"],""),
+ Q("Q15","Are communication channels clear and inclusive?","project","com",["M: CE3 (paraphrase)","M: Inclusive communication","","","","","","P: Community-profile files"],""),
+ Q("Q16","Is there a code of conduct and response process?","project","com",["M: CE4 (paraphrase)","P: Issues Inclusivity","","","","","","E: Code-of-conduct file"],""),
+ Q("Q17","Are community metrics monitored?","project","com",["M: CE5 (paraphrase)","M: Community metric model"],""),
+ Q("Q42","Is user feedback collected and acted on?","project","com",["M: AI5 (paraphrase)","","","","","","","","","","","","","P: Pilot usability and co-design (different object)"],""),
+ Q("Q18","Is installation and upgrade guidance usable?","project","doc",["M: DO1 (paraphrase)","P: Documentation Usability","P: Practical Testing","P: Skills planning","P: §III.A / IV.B implementation"],""),
+ Q("Q19","Is user documentation usable?","project","doc",["M: DO2 (paraphrase)","M: Documentation Usability","P: Practical Testing","","","","","E: README file"],""),
+ Q("Q20","Is developer onboarding documented?","project","doc",["M: DO3 (paraphrase)","P: Documentation Usability","","","","","","E: CONTRIBUTING file"],""),
+ Q("Q21","Are architecture and integration documented?","project","doc",["M: DO4 (paraphrase)","","P: Interface Stability","","P: §IV.B integration requirements"],""),
+ Q("Q22","Is documentation maintained?","project","doc",["M: DO5 (paraphrase)","P: Documentation Usability"],""),
+ Q("Q23","Is the project roadmap clear?","project","ops",["M: PO1 (paraphrase)","P: Strategy model"],""),
+ Q("Q24","Are issues triaged and resolved?","project","ops",["M: PO2 (paraphrase)","M: Time To Close; Issue Age; Defect Resolution Duration","P: Maintenance & Sustainability"],""),
+ Q("Q25","Are releases maintained and available?","project","ops",["M: PO3 (paraphrase)","M: Release Frequency","M: Recent maintenance and releases","","","","","","E: Maintained check"],""),
+ Q("Q26","What support is available and where are its boundaries?","project","ops",["M: PO4 (paraphrase)","","P: Maintenance & Sustainability","M: Support planning","M: §III / IV.C support services","","","","","P: Criteria 3–4 contracted source/dependency support"],""),
+ Q("Q27","Are maintainers available for the required work?","project","ops",["M: PO5 (paraphrase)","P: Contributor/bus factor; change-request trends","P: Maintenance & Sustainability","","","","","","","P: Criteria 1, 3, 4 supplier capacity"],"Maintainer availability and contracted supplier capacity are distinct. Contributor counts alone do not establish availability."),
+ Q("Q38","Is the project value proposition explained?","project","ops",["M: AI1 (paraphrase)","","P: Suitability"],"Related to Q01, but project positioning is separate from the research team’s rationale."),
+ Q("Q39","Are deployments or adoption examples documented?","project","ops",["M: AI2 (paraphrase)","P: Project Popularity"],"Popularity and deployment evidence are related signals, not proof of suitability."),
+ Q("Q41","Are service options documented?","project","ops",["M: AI4 (paraphrase)","","","P: Service procurement","P: Table 1 services"],"Related to Q02 and support questions, but does not classify the buyer’s transaction."),
+ Q("Q28","Is there a vulnerability disclosure and response process?","project","sec",["M: SR1 (paraphrase)","P: Compliance + Security model","M: Security Practices","","","U: Security domain; question IDs not verified","M: 18974 §4.1.5 / 4.3.2 security process","","E: Security-Policy"],""),
+ Q("Q29","Are testing, scanning and CI used?","project","sec",["M: SR2 (paraphrase)","P: OpenSSF Best Practices","M: Testing; Security Practices","","","","","","P: Repository security checks"],""),
+ Q("Q30","Is release integrity protected?","project","sec",["M: SR3 (paraphrase)","","M: Authenticity; Security Practices","","","U: Full workbook not inspected","P: 18974 §4.1.5 process scope","","E: Repository integrity checks"],""),
+ Q("Q32","Are incidents reviewed and lessons applied?","project","sec",["M: SR5 (paraphrase)","","P: Security Practices","","","","P: 18974 monitoring"],""),
+ Q("Q50","Are dependencies current and supportable?","project","sec",["","M: Libyears; Upstream Code Dependencies","M: Dependency impact","","","","","","E: Dependency-Update-Tool","P: Criterion 4 support for core dependencies"],""),
+ Q("Q51","Are known vulnerabilities identified and mitigated?","project","sec",["","P: Compliance + Security","M: Vulnerability review","","","U: Security question IDs not verified","M: 18974 §4.3 detection, risk, mitigation","","E: Vulnerabilities"],"Technical evidence overlap only. This does not prescribe automatic screening in the toolkit."),
+ Q("Q34","Does the solution support relevant open standards?","project","std",["M: AS2 (paraphrase)","","","M: Interoperability guidance","M: §IV.B interoperability"],""),
+ Q("Q35","Can data and use move to another solution?","project","std",["M: AS3 (paraphrase)","","P: Interface Stability","M: Exit planning","M: §IV.B–C exit and interoperability"],""),
+ Q("Q43","Are resources sufficient for project continuity?","project","sus",["M: FS1 (paraphrase)","P: Strategy model","P: Sustainability","","","","P: 5230 resourcing; 18974 §4.2.2 program resourcing"],""),
+ Q("Q44","Is project funding sustainable?","project","sus",["M: FS2 (paraphrase)","P: Strategy model","","P: Contribution/support planning"],""),
+ Q("Q45","Is there a project continuity plan?","project","sus",["M: FS3 (paraphrase)","P: Strategy model","M: Maintenance & Sustainability"],""),
+ Q("Q46","Is infrastructure ownership and responsibility clear?","project","sus",["M: FS4 (paraphrase)"],""),
+ Q("Q47","Are sustainability risks reviewed?","project","sus",["M: FS5 (paraphrase)","P: Contextual viability analysis"],""),
+
+ Q("Q31","Are privacy implications addressed?","review","ctx",["M: SR4 (paraphrase)","","P: Usability & Security","","P: §III.A deployment context","P: Vendor privacy assessment"],"",{specialist:"privacy"}),
+ Q("Q33","Can intended users access the interface?","review","ctx",["M: AS1 (paraphrase)","","","","","M: ITAC-06 evidence; -07 contractual commitment; -08 WCAG; -09 issue tracking; -14 roadmap; -17 keyboard operation"],"",{specialist:"accessibility"}),
+ Q("Q52","What systems or data can an external provider access?","review","ctx",["","","P: Usability & Security","","","M: Vendor scope/security/privacy","P: 18974 program scope","","","","","","","M: Deployment-specific review"],"",{specialist:"security"}),
+ Q("Q48","What is the full lifecycle cost, including exit?","review","cost",["P: FS1–3 project resources","P: Strategy","","M: Total cost of ownership","M: §III.B / IV.C lifecycle costs"],"Project finances and the buyer’s lifecycle costs need separate answers."),
+ Q("Q61","Which contract terms and handoffs block this case?","review","contract",["","","","P: Procurement planning","P: Bid/service requirements","","","","","","","","","M: Indemnity, liability, IP, warranty/service commitments; coordination"],"FIN case interview question, not a project maturity criterion.",{specialist:"legal"}),
+ Q("Q57","Can the physical device be specified, fabricated and accepted?","review","hw",["","","","","","","","","","","P: Open designs, buyer knowledge, procurement relationships","","P: CERN case and procurement capacity","P: Hardware/software friction mapping"],"No complete hardware acceptance questionnaire established in the inspected sources. FIN design files, BOM and calibration questions remain proposed additions.",{hardware:true}),
+ Q("Q58","Who is responsible for physical safety and specialist review?","review","hw",["","","","","","","","","","","","","","P: Hardware responsibilities in proposed redesign"],"Gap: no complete safety or clinical-authorization standard established in the comparison.",{hardware:true, specialist:"safety"}),
+ Q("Q59","Do institutional mechanisms enable open hardware procurement?","review","hw",["","","","","","","","","","","M: Adaptable procurement mechanisms; technical capacity","P: Institutional champions; mission alignment","M: Buyer organizational development","M: Institutional friction mapping"],"",{hardware:true}),
+ Q("Q60","Do TTO policies and skills support researcher goals?","review","hw",["","","","","","","","","","","","M: Licensing literacy; dialogue; champions; mission","P: Institutional transformation","P: IP and interdepartmental friction"],"",{hardware:true}),
+
+ Q("Q53","Can modifications be published and submitted upstream?","provider","contract",["","","","P: Supplier contributions","","","M: 5230 §3.5.1 contribution process","E: CONTRIBUTING","","M: Criterion 2 upstream publication"],"Submission/publication is controllable by the supplier. Community acceptance is a separate decision."),
+ Q("Q54","Does the supplier have relevant source-level capability?","provider","contract",["","","","","","P: Vendor responses","M: 5230 §3.1.2; 18974 §4.1.2 competence","","","M: Criteria 1 upstream relationship; 3 source-level support","M: Supplier reliability and capacity","","M: Supplier-side capacity"],""),
+ Q("Q55","Will support reach critical upstream dependencies?","provider","contract",["","","","P: Contribution planning","","","","","","M: Criterion 4","","","","M: Support reaching maintainers"],"A separate question from whether the supplier offers end-user support."),
+ Q("Q56","Are compliance policies, scope and responsibilities defined?","provider","contract",["","","","","","P: Provider compliance domain","M: 5230 §§3.1–3.2; 18974 §§4.1–4.2"],"Organizational process assessment, not project governance."),
+
+ Q("Q49","Can the institution operate and support it after the grant?","owner","own",["P: FS3 project continuity","","P: Sustainability","M: Resource planning","M: Internal capacity","","","","","","M: Buyer technical capacity","","M: Demand-side institutional capacity","M: Operational ownership"],"Do not substitute upstream maturity for the institution’s staffing and budget."),
+ Q("Q62","Who owns post-award obligations and monitoring?","owner","own",["","","","","","P: Assessment reuse","P: Scoped compliance processes; security monitoring","E: Dated file observations","E: Dated technical signals","P: Support commitments","","","","M: Decision owner, conditions and review trigger"],"Shared evidence can be reused. Dated repository signals do not allocate contractual responsibility.")
+];
+
+const FIN_EVAL = [
+ {id:"Q63", q:"Did the pilot reduce effort and improve outcomes?", src:"FIN case methodology — effectiveness, effort, feasibility, usability, sustainability, transferability, replicability", note:"Evaluates the FIN intervention, not an individual open-source candidate."},
+ {id:"Q64", q:"Does the proposed FIN pilot demonstrate problem specificity?", src:"FIN pilot-selection rubric; scored 0–3", note:"Pilot-selection criterion."},
+ {id:"Q65", q:"Does the proposed FIN pilot demonstrate coalition necessity?", src:"FIN pilot-selection rubric; scored 0–3", note:"Pilot-selection criterion."},
+ {id:"Q66", q:"Does the proposed FIN pilot demonstrate demonstration value?", src:"FIN pilot-selection rubric; scored 0–3", note:"Pilot-selection criterion."},
+ {id:"Q67", q:"Does the proposed FIN pilot demonstrate appeal?", src:"FIN pilot-selection rubric; scored 0–3", note:"Pilot-selection criterion."}
+];
+const QBYID = Object.fromEntries(QUESTIONS.map(q=>[q.id,q]));
+// ---------- Repository evidence fetchers ----------
+// All calls are made from the browser against public APIs. Nothing is proxied.
+// Shapes follow the public API documentation; every call is optional and failures are recorded, not fatal.
+
+const OSI_SPDX = new Set(["MIT","Apache-2.0","BSD-2-Clause","BSD-3-Clause","GPL-2.0","GPL-2.0-only","GPL-2.0-or-later","GPL-3.0","GPL-3.0-only","GPL-3.0-or-later","LGPL-2.1","LGPL-2.1-only","LGPL-2.1-or-later","LGPL-3.0","LGPL-3.0-only","LGPL-3.0-or-later","AGPL-3.0","AGPL-3.0-only","AGPL-3.0-or-later","MPL-2.0","EPL-1.0","EPL-2.0","EUPL-1.1","EUPL-1.2","ISC","Unlicense","0BSD","Zlib","BSL-1.0","Artistic-2.0","CDDL-1.0","MS-PL","MS-RL","NCSA","PostgreSQL","OFL-1.1","CECILL-2.1","UPL-1.0","CERN-OHL-P-2.0","CERN-OHL-S-2.0","CERN-OHL-W-2.0"]);
+const HW_SPDX = new Set(["CERN-OHL-P-2.0","CERN-OHL-S-2.0","CERN-OHL-W-2.0","CERN-OHL-1.1","CERN-OHL-1.2","TAPR-OHL-1.0","CC-BY-4.0","CC-BY-SA-4.0","SHL-2.0","SHL-2.1"]);
+
+const MANIFESTS = ["package.json","package-lock.json","yarn.lock","pnpm-lock.yaml","requirements.txt","requirements-dev.txt","pyproject.toml","setup.py","setup.cfg","Pipfile","Pipfile.lock","poetry.lock","environment.yml","environment.yaml","conda.yml","Cargo.toml","Cargo.lock","go.mod","go.sum","pom.xml","build.gradle","build.gradle.kts","Gemfile","Gemfile.lock","composer.json","composer.lock","DESCRIPTION","renv.lock","Project.toml","Manifest.toml","CMakeLists.txt","Makefile","platformio.ini","Dockerfile","docker-compose.yml","pubspec.yaml","mix.exs","*.csproj","packages.config","elm.json","shard.yml","vcpkg.json","conanfile.txt","conanfile.py"];
+const HW_EXT = [".kicad_pcb",".kicad_pro",".kicad_sch",".sch",".brd",".stl",".step",".stp",".scad",".f3d",".fcstd",".iges",".igs",".dxf",".gbr",".gerber",".3mf",".obj",".ino",".hex"];
+const HW_DIRS = ["hardware","hw","cad","electronics","mechanical","pcb","firmware","enclosure","3d","3d-print","3dprint","mechanics","schematics","gerbers","bom","design-files","designs"];
+
+function parseRepoUrl(input){
+  let s = (input||"").trim();
+  if(!s) return null;
+  if(!/^https?:\/\//i.test(s)) s = "https://" + s;
+  let u; try { u = new URL(s); } catch(e){ return null; }
+  const host = u.hostname.toLowerCase();
+  const parts = u.pathname.replace(/\.git$/,"").split("/").filter(Boolean);
+  if(parts.length < 2) return null;
+  let kind = "unknown";
+  if(host === "github.com" || host === "www.github.com") kind = "github";
+  else if(host === "gitlab.com" || host.includes("gitlab")) kind = "gitlab";
+  else if(host === "codeberg.org" || host.includes("gitea") || host.includes("forgejo")) kind = "gitea";
+  // GitLab supports nested groups: owner is everything before the last segment (stop at "/-/")
+  let owner, repo;
+  if(kind === "gitlab"){
+    const idx = parts.indexOf("-");
+    const p = idx > -1 ? parts.slice(0, idx) : parts;
+    repo = p[p.length-1]; owner = p.slice(0,-1).join("/");
+  } else { owner = parts[0]; repo = parts[1]; }
+  return { kind, host, owner, repo, path: owner + "/" + repo, canonical: `https://${host}/${owner}/${repo}` };
+}
+
+function isoDaysAgo(d){ return new Date(Date.now() - d*864e5).toISOString().slice(0,10); }
+
+async function getJSON(url, headers, errors, label){
+  try {
+    const r = await fetch(url, { headers: Object.assign({ "Accept": "application/json" }, headers||{}) });
+    if(r.status === 404) return { notFound:true };
+    if(r.status === 403 || r.status === 429){
+      const rem = r.headers.get("x-ratelimit-remaining");
+      const reset = r.headers.get("x-ratelimit-reset");
+      let msg = `${label||url}: HTTP ${r.status}`;
+      if(rem === "0" && reset){ msg += ` (rate limit reached; resets ${new Date(Number(reset)*1000).toLocaleTimeString()})`; }
+      errors.push(msg); return null;
+    }
+    if(!r.ok){ errors.push(`${label||url}: HTTP ${r.status}`); return null; }
+    const j = await r.json();
+    j.__headers = { link: r.headers.get("link"), total: r.headers.get("x-total") || r.headers.get("x-total-count") };
+    return j;
+  } catch(e){ errors.push(`${label||url}: ${e.message || "network error"}`); return null; }
+}
+
+function lastPageFromLink(link){
+  if(!link) return null; const m = /[?&]page=(\d+)>;\s*rel="last"/.exec(link); return m ? Number(m[1]) : null;
+}
+
+function classifyEntries(names, dirs){
+  const lower = names.map(n=>n.toLowerCase());
+  const has = (re) => names.find(n => re.test(n)) || null;
+  const f = {
+    readme: has(/^readme(\.|$)/i), license: has(/^(license|licence|copying|unlicense)(\.|$|-)/i), contributing: has(/^contributing(\.|$)/i),
+    codeOfConduct: has(/^code[-_]?of[-_]?conduct(\.|$)/i), security: has(/^security(\.|$)/i), governance: has(/^governance(\.|$)/i),
+    maintainers: has(/^(maintainers|authors|codeowners)(\.|$)/i), roadmap: has(/^roadmap(\.|$)/i), changelog: has(/^(changelog|changes|history|news|releases)(\.|$)/i),
+    citation: has(/^citation(\.cff)?$/i), codemeta: has(/^codemeta\.json$/i), support: has(/^support(\.|$)/i), funding: has(/^funding(\.yml|\.yaml|\.md)?$/i),
+    docsDir: dirs.find(d => /^(docs?|documentation|wiki|manual)$/i.test(d)) || null,
+    testsDir: dirs.find(d => /^(tests?|spec|__tests__|testing)$/i.test(d)) || null,
+    dependabot: null, renovate: has(/^(renovate\.json5?|\.renovaterc(\.json)?)$/i), ciFile: has(/^(\.gitlab-ci\.yml|\.travis\.yml|azure-pipelines\.yml|jenkinsfile|\.drone\.yml|\.woodpecker\.ya?ml|appveyor\.yml|\.circleci)$/i),
+    manifests: names.filter(n => MANIFESTS.includes(n) || /\.csproj$/i.test(n)),
+    hardware: names.filter(n => HW_EXT.some(e => n.toLowerCase().endsWith(e)) || /bom.*\.(csv|xlsx|ods|md)$/i.test(n)).concat(dirs.filter(d => HW_DIRS.includes(d.toLowerCase())).map(d => d + "/")),
+    preCommit: has(/^\.pre-commit-config\.ya?ml$/i)
+  };
+  return f;
+}
+
+// ---------- GitHub ----------
+async function fetchGitHub(ref, token){
+  const errors = []; const H = token ? { "Authorization": "Bearer " + token, "X-GitHub-Api-Version":"2022-11-28" } : { "X-GitHub-Api-Version":"2022-11-28" };
+  const base = `https://api.github.com/repos/${ref.owner}/${ref.repo}`;
+  const d90 = isoDaysAgo(90), d180 = isoDaysAgo(180), d365 = isoDaysAgo(365);
+  const [repo, community, releases, contributors, commits, closed180, opened180, merged180, root, dotgithub, workflows] = await Promise.all([
+    getJSON(base, H, errors, "repository"),
+    getJSON(base + "/community/profile", H, errors, "community profile"),
+    getJSON(base + "/releases?per_page=10", H, errors, "releases"),
+    getJSON(base + "/contributors?per_page=100&anon=1", H, errors, "contributors"),
+    getJSON(base + `/commits?since=${d90}T00:00:00Z&per_page=100`, H, errors, "commits (90 days)"),
+    getJSON(`https://api.github.com/search/issues?q=repo:${ref.owner}/${ref.repo}+is:issue+closed:>=${d180}&per_page=1`, H, errors, "closed issues (180 days)"),
+    getJSON(`https://api.github.com/search/issues?q=repo:${ref.owner}/${ref.repo}+is:issue+created:>=${d180}&per_page=1`, H, errors, "opened issues (180 days)"),
+    getJSON(`https://api.github.com/search/issues?q=repo:${ref.owner}/${ref.repo}+is:pr+merged:>=${d180}&per_page=1`, H, errors, "merged pull requests (180 days)"),
+    getJSON(base + "/contents/", H, errors, "root listing"),
+    getJSON(base + "/contents/.github", H, errors, ".github listing"),
+    getJSON(base + "/contents/.github/workflows", H, errors, "workflows listing")
+  ]);
+  if(!repo || repo.notFound) return { ok:false, errors: errors.length ? errors : ["Repository not found or not public."] };
+  let tags = null;
+  if(Array.isArray(releases) && releases.length === 0){ tags = await getJSON(base + "/tags?per_page=5", H, errors, "tags"); }
+
+  const rootNames = Array.isArray(root) ? root.map(e=>e.name) : [];
+  const rootDirs = Array.isArray(root) ? root.filter(e=>e.type==="dir").map(e=>e.name) : [];
+  const files = classifyEntries(rootNames, rootDirs);
+  const gh = Array.isArray(dotgithub) ? dotgithub.map(e=>e.name) : [];
+  const ghl = gh.map(n=>n.toLowerCase());
+  files.security = files.security || (ghl.includes("security.md") ? ".github/SECURITY.md" : null);
+  files.funding = files.funding || (ghl.includes("funding.yml") ? ".github/FUNDING.yml" : null);
+  files.codeOfConduct = files.codeOfConduct || (gh.find(n=>/^code[-_]?of[-_]?conduct/i.test(n)) ? ".github/CODE_OF_CONDUCT.md" : null);
+  files.contributing = files.contributing || (gh.find(n=>/^contributing/i.test(n)) ? ".github/CONTRIBUTING.md" : null);
+  files.maintainers = files.maintainers || (ghl.includes("codeowners") ? ".github/CODEOWNERS" : null) || (rootNames.includes("docs") ? null : null);
+  files.dependabot = ghl.includes("dependabot.yml") || ghl.includes("dependabot.yaml") ? ".github/dependabot.yml" : null;
+  files.issueTemplate = gh.find(n=>/^issue_template/i.test(n)) ? ".github/ISSUE_TEMPLATE" : null;
+  files.prTemplate = gh.find(n=>/^pull_request_template/i.test(n)) ? ".github/PULL_REQUEST_TEMPLATE" : null;
+  files.workflows = Array.isArray(workflows) ? workflows.filter(e=>/\.ya?ml$/i.test(e.name)).map(e=>e.name) : [];
+  files.security = files.security || (community && community.files && community.files.security_policy ? "SECURITY (community profile)" : null);
+
+  // Community profile (GitHub's own evidence of community files)
+  const cp = community && !community.notFound ? community : null;
+  const cpf = cp && cp.files ? cp.files : {};
+  if(cpf.contributing && !files.contributing) files.contributing = "CONTRIBUTING (community profile)";
+  if(cpf.code_of_conduct && !files.codeOfConduct) files.codeOfConduct = "CODE_OF_CONDUCT (community profile)";
+  if(cpf.readme && !files.readme) files.readme = "README (community profile)";
+  if(cpf.license && !files.license) files.license = "LICENSE (community profile)";
+  if(cpf.issue_template && !files.issueTemplate) files.issueTemplate = "issue template (community profile)";
+  if(cpf.pull_request_template && !files.prTemplate) files.prTemplate = "pull request template (community profile)";
+
+  // People
+  const cl = Array.isArray(contributors) ? contributors : [];
+  const total = cl.reduce((a,c)=>a+(c.contributions||0),0);
+  const sorted = cl.slice().sort((a,b)=>(b.contributions||0)-(a.contributions||0));
+  const lastPage = contributors && contributors.__headers ? lastPageFromLink(contributors.__headers.link) : null;
+  const people = {
+    contributorsCount: cl.length, contributorsCapped: cl.length >= 100, contributorsPages: lastPage,
+    topShare: total ? (sorted[0].contributions||0)/total : null,
+    top3Share: total ? sorted.slice(0,3).reduce((a,c)=>a+(c.contributions||0),0)/total : null,
+    recentAuthors: Array.isArray(commits) ? new Set(commits.map(c => (c.author && c.author.login) || (c.commit && c.commit.author && c.commit.author.email) || "?")).size : null
+  };
+
+  const rel = Array.isArray(releases) ? releases : [];
+  const activity = {
+    commits90d: Array.isArray(commits) ? commits.length : null, commits90dCapped: Array.isArray(commits) && commits.length >= 100,
+    releasesCount: rel.length, releasesCapped: rel.length >= 10,
+    latestRelease: rel[0] ? { tag: rel[0].tag_name, name: rel[0].name, date: rel[0].published_at, url: rel[0].html_url, prerelease: rel[0].prerelease } : null,
+    latestTag: Array.isArray(tags) && tags[0] ? tags[0].name : null,
+    releasesLastYear: rel.filter(r => r.published_at && r.published_at.slice(0,10) >= d365).length
+  };
+  const issues = {
+    open: repo.open_issues_count, closed180d: closed180 && typeof closed180.total_count === "number" ? closed180.total_count : null,
+    opened180d: opened180 && typeof opened180.total_count === "number" ? opened180.total_count : null,
+    merged180d: merged180 && typeof merged180.total_count === "number" ? merged180.total_count : null
+  };
+  const lic = repo.license && repo.license.spdx_id && repo.license.spdx_id !== "NOASSERTION" ? repo.license.spdx_id : (repo.license ? "unrecognized" : null);
+  const signals = {
+    ok:true, source:"GitHub", host:"github.com", owner:ref.owner, repo:ref.repo, url: repo.html_url, fetchedAt: new Date().toISOString(),
+    meta: { description: repo.description, homepage: repo.homepage, archived: !!repo.archived, disabled: !!repo.disabled, fork: !!repo.fork, createdAt: repo.created_at, pushedAt: repo.pushed_at, defaultBranch: repo.default_branch, stars: repo.stargazers_count, forks: repo.forks_count, watchers: repo.subscribers_count, topics: repo.topics||[], hasIssues: repo.has_issues, hasDiscussions: !!repo.has_discussions, hasWiki: repo.has_wiki, visibility: repo.visibility, language: repo.language },
+    license: { spdx: lic, name: repo.license ? repo.license.name : null, url: repo.license ? `${repo.html_url}/blob/${repo.default_branch}/LICENSE` : null, osi: lic ? OSI_SPDX.has(lic) : null, hardware: lic ? HW_SPDX.has(lic) : null },
+    community: cp ? { health: cp.health_percentage, description: cp.description, documentation: cp.documentation } : null,
+    files, people, activity, issues, scorecard: null, errors
+  };
+  signals.scorecard = await fetchScorecard("github.com", ref.owner, ref.repo, errors);
+  return signals;
+}
+
+// ---------- OpenSSF Scorecard (public API, GitHub + GitLab projects) ----------
+async function fetchScorecard(platform, owner, repo, errors){
+  const j = await getJSON(`https://api.securityscorecards.dev/projects/${platform}/${owner}/${repo}`, {}, errors, "OpenSSF Scorecard");
+  if(!j || j.notFound || !Array.isArray(j.checks)) return null;
+  const checks = {}; j.checks.forEach(c => { checks[c.name] = { score: c.score, reason: c.reason, url: c.documentation && c.documentation.url }; });
+  return { score: j.score, date: j.date, version: j.scorecard && j.scorecard.version, commit: j.repo && j.repo.commit, checks, url: `https://scorecard.dev/viewer/?uri=${platform}/${owner}/${repo}` };
+}
+
+// ---------- GitLab (gitlab.com or self-hosted) ----------
+async function fetchGitLab(ref, token){
+  const errors = []; const H = token ? { "PRIVATE-TOKEN": token } : {};
+  const api = `https://${ref.host}/api/v4/projects/${encodeURIComponent(ref.path)}`;
+  const d90 = isoDaysAgo(90), d180 = isoDaysAgo(180), d365 = isoDaysAgo(365);
+  const [proj, tree, releases, commits, contributors, statsOpened, statsClosed, mrs] = await Promise.all([
+    getJSON(api + "?license=true", H, errors, "project"),
+    getJSON(api + "/repository/tree?per_page=100", H, errors, "root listing"),
+    getJSON(api + "/releases?per_page=10", H, errors, "releases"),
+    getJSON(api + `/repository/commits?since=${d90}T00:00:00Z&per_page=100`, H, errors, "commits (90 days)"),
+    getJSON(api + "/repository/contributors?per_page=100&order_by=commits&sort=desc", H, errors, "contributors"),
+    getJSON(api + `/issues_statistics?created_after=${d180}T00:00:00Z`, H, errors, "issue statistics (opened)"),
+    getJSON(api + `/issues_statistics?updated_after=${d180}T00:00:00Z&state=closed`, H, errors, "issue statistics (closed)"),
+    getJSON(api + `/merge_requests?state=merged&updated_after=${d180}T00:00:00Z&per_page=100`, H, errors, "merged merge requests")
+  ]);
+  if(!proj || proj.notFound) return { ok:false, errors: errors.length ? errors : ["Project not found or not public."] };
+  const names = Array.isArray(tree) ? tree.map(e=>e.name) : []; const dirs = Array.isArray(tree) ? tree.filter(e=>e.type==="tree").map(e=>e.name) : [];
+  const files = classifyEntries(names, dirs);
+  files.workflows = files.ciFile ? [files.ciFile] : [];
+  files.issueTemplate = dirs.includes(".gitlab") ? ".gitlab/ (templates not inspected)" : null;
+  const cl = Array.isArray(contributors) ? contributors : []; const total = cl.reduce((a,c)=>a+(c.commits||0),0);
+  const sorted = cl.slice().sort((a,b)=>(b.commits||0)-(a.commits||0));
+  const rel = Array.isArray(releases) ? releases : [];
+  const licKey = proj.license ? (proj.license.nickname || proj.license.name || proj.license.key) : null;
+  const spdx = proj.license && proj.license.key ? normalizeGitLabLicense(proj.license.key) : null;
+  const signals = {
+    ok:true, source:"GitLab", host: ref.host, owner: ref.owner, repo: ref.repo, url: proj.web_url, fetchedAt: new Date().toISOString(),
+    meta: { description: proj.description, homepage: null, archived: !!proj.archived, fork: !!proj.forked_from_project, createdAt: proj.created_at, pushedAt: proj.last_activity_at, defaultBranch: proj.default_branch, stars: proj.star_count, forks: proj.forks_count, topics: proj.topics||[], hasIssues: proj.issues_enabled !== false, hasWiki: proj.wiki_enabled, visibility: proj.visibility },
+    license: { spdx, name: licKey, url: proj.license_url || null, osi: spdx ? OSI_SPDX.has(spdx) : null, hardware: spdx ? HW_SPDX.has(spdx) : null },
+    community: null,
+    files, people: { contributorsCount: cl.length, contributorsCapped: cl.length >= 100, topShare: total ? (sorted[0].commits||0)/total : null, top3Share: total ? sorted.slice(0,3).reduce((a,c)=>a+(c.commits||0),0)/total : null, recentAuthors: Array.isArray(commits) ? new Set(commits.map(c=>c.author_email||c.author_name)).size : null },
+    activity: { commits90d: Array.isArray(commits) ? commits.length : null, commits90dCapped: Array.isArray(commits) && commits.length >= 100, releasesCount: rel.length, releasesCapped: rel.length >= 10, latestRelease: rel[0] ? { tag: rel[0].tag_name, name: rel[0].name, date: rel[0].released_at, url: rel[0]._links && rel[0]._links.self } : null, latestTag: null, releasesLastYear: rel.filter(r=>r.released_at && r.released_at.slice(0,10) >= d365).length },
+    issues: { open: proj.open_issues_count, opened180d: statsOpened && statsOpened.statistics ? statsOpened.statistics.counts.all : null, closed180d: statsClosed && statsClosed.statistics ? statsClosed.statistics.counts.closed : null, merged180d: Array.isArray(mrs) ? mrs.length : null },
+    scorecard: null, errors
+  };
+  if(ref.host === "gitlab.com") signals.scorecard = await fetchScorecard("gitlab.com", ref.owner, ref.repo, errors);
+  return signals;
+}
+function normalizeGitLabLicense(key){
+  const map = { "mit":"MIT","apache-2.0":"Apache-2.0","gpl-3.0":"GPL-3.0","gpl-2.0":"GPL-2.0","lgpl-3.0":"LGPL-3.0","lgpl-2.1":"LGPL-2.1","agpl-3.0":"AGPL-3.0","mpl-2.0":"MPL-2.0","bsd-2-clause":"BSD-2-Clause","bsd-3-clause":"BSD-3-Clause","isc":"ISC","unlicense":"Unlicense","epl-2.0":"EPL-2.0","eupl-1.2":"EUPL-1.2","cc-by-4.0":"CC-BY-4.0","cc-by-sa-4.0":"CC-BY-SA-4.0","cern-ohl-p-2.0":"CERN-OHL-P-2.0","cern-ohl-s-2.0":"CERN-OHL-S-2.0","cern-ohl-w-2.0":"CERN-OHL-W-2.0" };
+  return map[String(key).toLowerCase()] || (key === "other" ? "unrecognized" : key);
+}
+
+// ---------- Gitea / Forgejo (Codeberg) ----------
+async function fetchGitea(ref, token){
+  const errors = []; const H = token ? { "Authorization": "token " + token } : {};
+  const api = `https://${ref.host}/api/v1/repos/${ref.owner}/${ref.repo}`;
+  const d90 = isoDaysAgo(90), d180 = isoDaysAgo(180), d365 = isoDaysAgo(365);
+  const [repo, root, releases, commits, closed, dotgithub, dotforgejo] = await Promise.all([
+    getJSON(api, H, errors, "repository"),
+    getJSON(api + "/contents/", H, errors, "root listing"),
+    getJSON(api + "/releases?limit=10", H, errors, "releases"),
+    getJSON(api + `/commits?since=${d90}T00:00:00Z&limit=100&stat=false`, H, errors, "commits (90 days)"),
+    getJSON(api + `/issues?state=closed&type=issues&since=${d180}T00:00:00Z&limit=50`, H, errors, "closed issues (180 days)"),
+    getJSON(api + "/contents/.github/workflows", H, errors, ".github/workflows"),
+    getJSON(api + "/contents/.forgejo/workflows", H, errors, ".forgejo/workflows")
+  ]);
+  if(!repo || repo.notFound) return { ok:false, errors: errors.length ? errors : ["Repository not found or not public."] };
+  const names = Array.isArray(root) ? root.map(e=>e.name) : []; const dirs = Array.isArray(root) ? root.filter(e=>e.type==="dir").map(e=>e.name) : [];
+  const files = classifyEntries(names, dirs);
+  files.workflows = [].concat(Array.isArray(dotgithub)?dotgithub.map(e=>e.name):[], Array.isArray(dotforgejo)?dotforgejo.map(e=>e.name):[]).concat(files.ciFile?[files.ciFile]:[]);
+  const rel = Array.isArray(releases) ? releases : [];
+  const spdx = Array.isArray(repo.licenses) && repo.licenses[0] ? repo.licenses[0] : (files.license ? "unrecognized" : null);
+  return {
+    ok:true, source:"Gitea/Forgejo", host: ref.host, owner: ref.owner, repo: ref.repo, url: repo.html_url, fetchedAt: new Date().toISOString(),
+    meta: { description: repo.description, homepage: repo.website, archived: !!repo.archived, fork: !!repo.fork, createdAt: repo.created_at, pushedAt: repo.updated_at, defaultBranch: repo.default_branch, stars: repo.stars_count, forks: repo.forks_count, topics: [], hasIssues: repo.has_issues, hasWiki: repo.has_wiki },
+    license: { spdx, name: spdx, url: null, osi: spdx ? OSI_SPDX.has(spdx) : null, hardware: spdx ? HW_SPDX.has(spdx) : null },
+    community: null, files,
+    people: { contributorsCount: null, topShare: null, top3Share: null, recentAuthors: Array.isArray(commits) ? new Set(commits.map(c=>(c.author&&c.author.login)||(c.commit&&c.commit.author&&c.commit.author.email))).size : null },
+    activity: { commits90d: Array.isArray(commits) ? commits.length : null, commits90dCapped: Array.isArray(commits) && commits.length >= 100, releasesCount: rel.length, releasesCapped: rel.length >= 10, latestRelease: rel[0] ? { tag: rel[0].tag_name, name: rel[0].name, date: rel[0].published_at, url: rel[0].html_url } : null, latestTag: null, releasesLastYear: rel.filter(r=>r.published_at && r.published_at.slice(0,10) >= d365).length },
+    issues: { open: repo.open_issues_count, closed180d: Array.isArray(closed) ? closed.length : null, opened180d: null, merged180d: null },
+    scorecard: null, errors
+  };
+}
+
+async function fetchRepositoryEvidence(ref, token){
+  if(ref.kind === "github") return fetchGitHub(ref, token);
+  if(ref.kind === "gitlab") return fetchGitLab(ref, token);
+  if(ref.kind === "gitea") return fetchGitea(ref, token);
+  return { ok:false, errors:["This host is not recognised. Supported: github.com, GitLab (gitlab.com or self-hosted), Codeberg and other Gitea/Forgejo instances. You can still record the evidence by hand."] };
+}
+// ---------- Evidence → questions ----------
+// Each item: {label, value, ok: true|false|null, src:"GitHub"|"GitLab"|"Gitea/Forgejo"|"Scorecard", link}
+// `suggest` is a suggested verdict for the assessor to confirm or overrule. It is never applied silently.
+
+function daysSince(iso){ if(!iso) return null; return Math.round((Date.now() - new Date(iso).getTime())/864e5); }
+function fmtDate(iso){ if(!iso) return "—"; try { return new Date(iso).toISOString().slice(0,10); } catch(e){ return String(iso); } }
+function pct(x){ return x==null ? "—" : Math.round(x*100) + "%"; }
+
+function deriveEvidence(S){
+  const E = {}; if(!S || !S.ok) return E;
+  const src = S.source; const sc = S.scorecard; const F = S.files || {}; const A = S.activity || {}; const P = S.people || {}; const I = S.issues || {}; const M = S.meta || {};
+  const fileUrl = (p) => S.url ? `${S.url}/blob/${M.defaultBranch||"main"}/${String(p).replace(/\s*\(.*\)$/,"")}` : null;
+  const add = (qid, item) => { (E[qid] = E[qid] || { items:[], suggest:null, reason:"" }).items.push(item); };
+  const setSuggest = (qid, v, reason) => { E[qid] = E[qid] || { items:[], suggest:null, reason:"" }; E[qid].suggest = v; E[qid].reason = reason; };
+  const check = (name) => sc && sc.checks && sc.checks[name] ? sc.checks[name] : null;
+  const scItem = (qid, name, label) => { const c = check(name); if(!c) return null; const ok = c.score == null || c.score < 0 ? null : c.score >= 7 ? true : c.score >= 4 ? "mixed" : false; add(qid, { label: label || ("Scorecard · " + name), value: (c.score==null||c.score<0 ? "n/a" : c.score + "/10") + (c.reason ? " — " + c.reason : ""), ok, src:"Scorecard", link: sc.url }); return c; };
+
+  // Q03 license
+  const L = S.license || {};
+  add("Q03", { label:"Detected license", value: L.spdx ? `${L.spdx}${L.name && L.name!==L.spdx ? " ("+L.name+")" : ""}` : "none detected", ok: L.spdx && L.spdx!=="unrecognized" ? true : L.spdx==="unrecognized" ? "mixed" : false, src, link: L.url || fileUrl("LICENSE") });
+  if(L.spdx && L.spdx!=="unrecognized") add("Q03", { label:"License class", value: L.osi ? "OSI-approved" : L.hardware ? "Open hardware / content license (not OSI software list)" : "Not on the OSI-approved list used here", ok: L.osi ? true : L.hardware ? "mixed" : false, src:"toolkit list" });
+  scItem("Q03","License");
+  setSuggest("Q03", !L.spdx ? "no" : L.spdx==="unrecognized" ? "partial" : (L.osi||L.hardware) ? "yes" : "partial", !L.spdx ? "No license file recognised by the host." : L.spdx==="unrecognized" ? "A license file exists but the host could not identify it; read it." : "Recognised license. Confirm it suits the intended use (copyleft scope, hardware vs software, documentation).");
+
+  // Q04 notices
+  add("Q04", { label:"LICENSE file present", value: F.license || "not found at repository root", ok: !!F.license, src, link: F.license ? fileUrl(F.license) : null });
+  setSuggest("Q04", F.license ? null : "partial", F.license ? "A license file is present; whether per-file copyright notices and NOTICE files are complete needs a look at the source." : "No top-level license file. Notices are unlikely to be complete.");
+
+  // Q05 dependencies
+  if(F.manifests && F.manifests.length) add("Q05", { label:"Dependency manifests at root", value: F.manifests.join(", "), ok: null, src });
+  else add("Q05", { label:"Dependency manifests at root", value:"none recognised (may live in subfolders)", ok:null, src });
+  scItem("Q05","Pinned-Dependencies");
+  setSuggest("Q05", null, "Manifests tell you where to look; the license inventory of dependencies is a separate exercise (SBOM, license scanner).");
+
+  // Q06 / Q14 / Q20 / Q53 contributing
+  const contrib = { label:"CONTRIBUTING file", value: F.contributing || "not found", ok: !!F.contributing, src, link: F.contributing ? fileUrl(F.contributing) : null };
+  ["Q06","Q14","Q20","Q53"].forEach(q => add(q, contrib));
+  if(F.prTemplate) add("Q14", { label:"Pull/merge request template", value: F.prTemplate, ok:true, src });
+  if(F.issueTemplate) add("Q14", { label:"Issue template", value: F.issueTemplate, ok:true, src });
+  setSuggest("Q14", F.contributing ? "yes" : "no", F.contributing ? "A contribution guide exists. Check it describes the actual review path." : "No contribution guide found.");
+  setSuggest("Q20", F.contributing || F.docsDir ? "partial" : "no", "Developer onboarding usually lives in CONTRIBUTING or docs/. Confirm it covers build, test and review.");
+  setSuggest("Q06", F.contributing ? "partial" : "no", "Contribution terms (CLA, DCO, inbound=outbound) need reading; file presence alone does not settle them.");
+  setSuggest("Q53", F.contributing ? "partial" : null, "The project accepts contributions on paper. Whether the supplier will publish and submit its modifications is a contract term.");
+
+  // Q08 / Q10 / Q11 governance
+  if(F.governance) add("Q08", { label:"GOVERNANCE file", value: F.governance, ok:true, src, link: fileUrl(F.governance) });
+  if(F.maintainers) add("Q08", { label:"Maintainers / CODEOWNERS", value: F.maintainers, ok:true, src, link: fileUrl(F.maintainers) });
+  if(!F.governance && !F.maintainers) add("Q08", { label:"Governance or maintainers file", value:"none found at root or .github", ok:false, src });
+  setSuggest("Q08", F.governance ? "partial" : null, F.governance ? "A governance document exists; read who actually decides." : "No governance document found. Decision authority must be established by asking.");
+  if(P.contributorsCount != null){
+    const bus = { label:"Contribution concentration", value: `${P.contributorsCount}${P.contributorsCapped ? "+" : ""} contributors${P.contributorsPages ? " (≈"+P.contributorsPages+" pages of 100)" : ""}; top contributor ${pct(P.topShare)}, top 3 ${pct(P.top3Share)} of counted contributions`, ok: P.topShare == null ? null : P.topShare > 0.8 ? false : P.topShare > 0.5 ? "mixed" : true, src, link: S.url ? S.url + "/graphs/contributors" : null };
+    add("Q10", bus); add("Q27", bus); add("Q11", { label:"Contribution concentration", value: bus.value, ok: bus.ok, src });
+  }
+  if(P.recentAuthors != null) add("Q27", { label:"Distinct authors in last 90 days", value: String(P.recentAuthors), ok: P.recentAuthors >= 3 ? true : P.recentAuthors >= 1 ? "mixed" : false, src });
+  scItem("Q27","Contributors");
+  setSuggest("Q10", P.topShare != null && P.topShare > 0.8 ? "no" : null, P.topShare != null && P.topShare > 0.8 ? "One person holds most of the history. A succession plan is unlikely unless documented." : "Succession is rarely documented; ask the maintainers.");
+  setSuggest("Q27", null, "Maintainer availability and contracted supplier capacity are distinct. Contributor counts alone do not establish availability.");
+
+  // Q09 public decisions / Q15 channels
+  add("Q09", { label:"Public issue tracker", value: M.hasIssues === false ? "disabled" : "enabled", ok: M.hasIssues !== false, src });
+  if(M.hasDiscussions) add("Q15", { label:"Discussions", value:"enabled", ok:true, src, link: S.url + "/discussions" });
+  add("Q15", { label:"Issue tracker", value: M.hasIssues === false ? "disabled" : "enabled", ok: M.hasIssues !== false, src });
+  if(F.support) add("Q15", { label:"SUPPORT file", value: F.support, ok:true, src, link: fileUrl(F.support) });
+  if(S.community && S.community.health != null) add("Q15", { label:"GitHub community profile health", value: S.community.health + "%", ok: S.community.health >= 70 ? true : S.community.health >= 40 ? "mixed" : false, src, link: S.url + "/community" });
+  setSuggest("Q15", null, "Channels exist or not; whether they are inclusive and answered is a human judgment.");
+
+  // Q16 code of conduct
+  add("Q16", { label:"Code of conduct", value: F.codeOfConduct || "not found", ok: !!F.codeOfConduct, src, link: F.codeOfConduct ? fileUrl(F.codeOfConduct) : null });
+  setSuggest("Q16", F.codeOfConduct ? "partial" : "no", F.codeOfConduct ? "A code of conduct exists. Check it names a contact and a response process." : "No code of conduct found.");
+
+  // Q18 / Q19 / Q21 / Q22 documentation
+  add("Q19", { label:"README", value: F.readme || "not found", ok: !!F.readme, src, link: F.readme ? fileUrl(F.readme) : null });
+  if(F.docsDir) { ["Q18","Q19","Q21","Q22"].forEach(q => add(q, { label:"Documentation folder", value: F.docsDir + "/", ok:true, src, link: S.url + "/tree/" + (M.defaultBranch||"main") + "/" + F.docsDir })); }
+  if(M.hasWiki) add("Q19", { label:"Wiki", value:"enabled", ok:null, src });
+  if(M.homepage) add("Q19", { label:"Project website", value: M.homepage, ok:true, src, link: M.homepage });
+  if(S.community && S.community.documentation) add("Q19", { label:"Documentation URL (community profile)", value: S.community.documentation, ok:true, src, link: S.community.documentation });
+  setSuggest("Q19", F.readme ? "partial" : "no", F.readme ? "Documentation exists; usability is a requester judgment after trying it." : "No README found.");
+  if(F.changelog) add("Q22", { label:"Changelog", value: F.changelog, ok:true, src, link: fileUrl(F.changelog) });
+
+  // Q23 roadmap
+  if(F.roadmap) add("Q23", { label:"ROADMAP file", value: F.roadmap, ok:true, src, link: fileUrl(F.roadmap) });
+  else add("Q23", { label:"ROADMAP file", value:"not found (roadmaps often live in issues or milestones)", ok:null, src });
+
+  // Q24 issues
+  if(I.open != null) add("Q24", { label:"Open issues", value: String(I.open), ok:null, src, link: S.url + "/issues" });
+  if(I.opened180d != null || I.closed180d != null) add("Q24", { label:"Issues opened / closed, last 180 days", value: `${I.opened180d ?? "—"} opened · ${I.closed180d ?? "—"} closed`, ok: I.closed180d == null ? null : I.closed180d === 0 && (I.opened180d||0) > 0 ? false : I.opened180d != null && I.closed180d >= I.opened180d*0.5 ? true : "mixed", src });
+  if(I.merged180d != null) add("Q24", { label:"Pull/merge requests merged, last 180 days", value: String(I.merged180d), ok: I.merged180d > 0 ? true : false, src });
+  setSuggest("Q24", I.closed180d == null ? null : (I.closed180d === 0 && (I.opened180d||0) > 0 ? "no" : "partial"), "Counts show throughput, not triage quality. Sample a few recent issues.");
+
+  // Q25 releases / maintained
+  const dPush = daysSince(M.pushedAt);
+  add("Q25", { label:"Last push", value: `${fmtDate(M.pushedAt)}${dPush!=null ? " ("+dPush+" days ago)" : ""}`, ok: dPush==null ? null : dPush <= 180 ? true : dPush <= 365 ? "mixed" : false, src });
+  if(A.commits90d != null) add("Q25", { label:"Commits in last 90 days", value: `${A.commits90d}${A.commits90dCapped ? "+" : ""}`, ok: A.commits90d > 0 ? true : false, src, link: S.url + "/commits" });
+  if(A.latestRelease) add("Q25", { label:"Latest release", value: `${A.latestRelease.tag || A.latestRelease.name} · ${fmtDate(A.latestRelease.date)}${A.latestRelease.prerelease ? " (pre-release)" : ""}; ${A.releasesLastYear} in last 12 months`, ok: daysSince(A.latestRelease.date) <= 365 ? true : "mixed", src, link: A.latestRelease.url });
+  else if(A.latestTag) add("Q25", { label:"Releases", value: `No releases published; latest tag ${A.latestTag}`, ok:"mixed", src });
+  else add("Q25", { label:"Releases", value:"none found", ok:false, src });
+  if(M.archived) add("Q25", { label:"Repository archived", value:"yes — read-only upstream", ok:false, src });
+  scItem("Q25","Maintained");
+  setSuggest("Q25", M.archived ? "no" : (dPush!=null && dPush > 365) ? "no" : (A.latestRelease || A.latestTag) && dPush <= 180 ? "yes" : "partial", M.archived ? "The upstream repository is archived." : "Judge recency against the project's natural release rhythm.");
+
+  // Q28 security policy
+  add("Q28", { label:"SECURITY policy file", value: F.security || "not found", ok: !!F.security, src, link: F.security ? fileUrl(F.security) : null });
+  scItem("Q28","Security-Policy");
+  setSuggest("Q28", F.security ? "partial" : "no", F.security ? "A policy exists; check it gives a contact and a response time." : "No vulnerability disclosure policy found.");
+
+  // Q29 testing & CI
+  const wf = F.workflows || [];
+  add("Q29", { label:"CI configuration", value: wf.length ? wf.join(", ") : "none found", ok: wf.length > 0, src });
+  if(F.testsDir) add("Q29", { label:"Tests folder", value: F.testsDir + "/", ok:true, src });
+  if(F.preCommit) add("Q29", { label:"pre-commit config", value: F.preCommit, ok:true, src });
+  scItem("Q29","CI-Tests"); scItem("Q29","SAST"); scItem("Q29","Fuzzing"); scItem("Q29","Code-Review");
+  setSuggest("Q29", wf.length || F.testsDir ? "partial" : "no", wf.length || F.testsDir ? "Automation exists; whether it tests what matters needs a look." : "No CI or tests found.");
+
+  // Q30 release integrity
+  scItem("Q30","Signed-Releases"); scItem("Q30","Branch-Protection"); scItem("Q30","Binary-Artifacts"); scItem("Q30","Token-Permissions"); scItem("Q30","Dangerous-Workflow"); scItem("Q30","Packaging");
+  if(!check("Signed-Releases")) add("Q30", { label:"Release integrity", value:"No Scorecard result; check for signed tags, checksums or attestations by hand.", ok:null, src:"toolkit" });
+
+  // Q50 dependencies current
+  if(F.dependabot) add("Q50", { label:"Dependabot config", value: F.dependabot, ok:true, src });
+  if(F.renovate) add("Q50", { label:"Renovate config", value: F.renovate, ok:true, src });
+  scItem("Q50","Dependency-Update-Tool"); scItem("Q50","Pinned-Dependencies");
+  if(!F.dependabot && !F.renovate && !check("Dependency-Update-Tool")) add("Q50", { label:"Dependency update automation", value:"none detected", ok:false, src });
+
+  // Q51 vulnerabilities
+  scItem("Q51","Vulnerabilities");
+  if(!check("Vulnerabilities")) add("Q51", { label:"Known vulnerabilities", value:"No Scorecard result. Run a dependency scanner (osv-scanner, pip-audit, npm audit) on the pinned version.", ok:null, src:"toolkit" });
+  setSuggest("Q51", null, "Technical evidence overlap only. This does not prescribe automatic screening in the toolkit.");
+
+  // Q38 / Q39 / Q17 positioning and adoption
+  add("Q38", { label:"Repository description", value: M.description || "none", ok: !!M.description, src });
+  if(M.topics && M.topics.length) add("Q38", { label:"Topics", value: M.topics.join(", "), ok:null, src });
+  if(M.stars != null) add("Q39", { label:"Stars / forks", value: `${M.stars} / ${M.forks}`, ok:null, src });
+  if(F.citation) { add("Q39", { label:"CITATION.cff", value: F.citation, ok:true, src, link: fileUrl(F.citation) }); add("Q38", { label:"CITATION.cff", value: F.citation, ok:true, src }); }
+  if(F.codemeta) add("Q38", { label:"codemeta.json", value: F.codemeta, ok:true, src, link: fileUrl(F.codemeta) });
+  setSuggest("Q39", null, "Popularity and deployment evidence are related signals, not proof of suitability.");
+
+  // Q43 / Q44 funding
+  if(F.funding) { add("Q44", { label:"Funding declaration", value: F.funding, ok:true, src, link: fileUrl(F.funding) }); add("Q43", { label:"Funding declaration", value: F.funding, ok:null, src }); }
+  else add("Q44", { label:"Funding declaration", value:"no FUNDING file (a project may still be funded)", ok:null, src });
+  scItem("Q43","CII-Best-Practices");
+  setSuggest("Q44", null, "A funding file shows where money can go, not that it arrives. Ask about budget and fiscal host.");
+
+  // Q46 infrastructure
+  add("Q46", { label:"Hosting", value: `${src} · ${S.host}${M.fork ? " · this repository is a fork" : ""}`, ok: M.fork ? "mixed" : null, src });
+
+  // Q57 hardware files
+  if(F.hardware && F.hardware.length) { add("Q57", { label:"Hardware design files / folders detected", value: F.hardware.slice(0,12).join(", ") + (F.hardware.length > 12 ? " …" : ""), ok:null, src }); add("Q57", { label:"Hardware license", value: L.hardware ? L.spdx : (L.spdx ? L.spdx + " (a software license applied to hardware; check scope)" : "none"), ok: L.hardware ? true : L.spdx ? "mixed" : false, src }); }
+
+  // Q62 dated signals
+  add("Q62", { label:"Evidence snapshot", value: `Fetched ${fmtDate(S.fetchedAt)} from ${src}${sc ? "; Scorecard dated " + fmtDate(sc.date) : ""}`, ok:null, src:"toolkit" });
+  setSuggest("Q62", null, "Shared evidence can be reused. Dated repository signals do not allocate contractual responsibility.");
+  return E;
+}
+
+// ---------- Route: light review vs extended review ----------
+// Mirrors the portal's rule: start light; expand only when a trigger fires.
+function computeRoute(c, S, answers){
+  const t = [];
+  const a = (q) => answers && answers[q] ? answers[q].verdict : null;
+  if(c.activity === "commissioned") t.push({ kind:"clarify", text:"Commissioned development: clarify scope before setting the route." });
+  if(c.sensitiveData) t.push({ kind:"trigger", text:"The software or hardware handles sensitive or personal data.", refer:"privacy / data protection" });
+  if(c.externalService) t.push({ kind:"trigger", text:"An external shared service or provider will host or access institutional systems.", refer:"information security" });
+  if(c.materialDependency) t.push({ kind:"trigger", text:"The project is a material dependency for the research or unit." });
+  if(c.clinical) t.push({ kind:"trigger", text:"Clinical or physical-safety relevance declared.", refer:"specialist safety / clinical review" });
+  else if(c.clinicalUnknown) t.push({ kind:"follow-up", text:"Clinical or safety relevance not yet known; confirm before the decision." });
+  if(c.kind !== "software" || c.hardwareWork) t.push({ kind:"trigger", text:"Physical hardware: fabrication, acceptance and safety questions apply." });
+  if(S && S.ok){
+    if(!S.license.spdx) t.push({ kind:"baseline", text:"No license detected in the repository." });
+    else if(S.license.spdx === "unrecognized") t.push({ kind:"baseline", text:"License file present but not recognised; legal reading needed.", refer:"legal" });
+    else if(!S.license.osi && !S.license.hardware) t.push({ kind:"baseline", text:`License ${S.license.spdx} is not on the OSI-approved list used here.`, refer:"legal" });
+    if(S.meta.archived) t.push({ kind:"baseline", text:"Upstream repository is archived." });
+    const d = daysSince(S.meta.pushedAt); if(d != null && d > 365) t.push({ kind:"baseline", text:`No activity for ${d} days.` });
+    if(!S.files.security) t.push({ kind:"baseline", text:"No vulnerability disclosure policy found." });
+    const v = S.scorecard && S.scorecard.checks && S.scorecard.checks["Vulnerabilities"]; if(v && v.score != null && v.score >= 0 && v.score < 7) t.push({ kind:"baseline", text:`Scorecard reports known vulnerabilities (${v.score}/10).` });
+    if(S.people.topShare != null && S.people.topShare > 0.8 && (S.people.contributorsCount||0) < 10) t.push({ kind:"baseline", text:"Contribution history concentrated in one person." });
+  }
+  ["Q03","Q25","Q28","Q51"].forEach(q => { if(a(q) === "no") t.push({ kind:"assessor", text:`${q} marked “not satisfied” by the assessor.` }); });
+  const route = t.some(x=>x.kind==="clarify") ? "clarify" : t.some(x=>x.kind!=="follow-up") ? "extended" : "light";
+  return { route, triggers: t };
+}
+// ---------- The ten researcher questions (the portal's instrument) ----------
+const SUPPORT = [["none","No purchase / assistance identifying options"],["maintenance","Maintenance or support"],["hosting","External hosting / service"],["development","Development / modification"],["equipment","Physical equipment / fabrication"],["funding","Upstream funding"],["training","Training / implementation"]];
+const DATA_OPTS = [["public","Public / non-sensitive"],["internal","Internal / confidential"],["personal","Personal or sensitive"],["regulated","Regulated (health, student records, export-controlled)"]];
+const SYSTEMS_OPTS = [["local","Local team use"],["shared","Shared or departmental service"],["institutional","Institution-wide or externally hosted"]];
+const IMPACT_OPTS = [["low","Low"],["moderate","Moderate"],["high","High"]];
+const CLINICAL_OPTS = [["unknown","Unknown"],["no","No"],["yes","Yes"]];
+const TYPE_OPTS = [["software","Software"],["hardware","Hardware"],["both","Software and hardware"],["service","Service"]];
+
+const TEN = [
+  { n:1, key:"objective",  q:"What is the research objective?", label:"Research goal", hint:"Describe the intended outcome and how it will be evaluated. A shortened version of this response is used as the assessment title.", xw:["Q01"] },
+  { n:2, key:"rationale",  q:"Why is an open-source approach appropriate?", label:"Rationale and alternatives considered", hint:"Relevant considerations may include reproducibility, adaptation, repair, cost or continuity. Briefly note any existing tools or alternatives considered.", xw:["Q01","Q38","Q39"] },
+  { n:3, key:"candidate",  q:"What software or hardware are you considering?", xw:["Q02","Q37"] },
+  { n:4, key:"use",        q:"What is the intended use?", label:"Use and operating context", hint:"Who will use it? What must it work with? For hardware, describe fabrication, calibration, repair or physical use. Mention existing open-source tools where relevant.", xw:["Q34","Q35","Q36","Q37","Q57"] },
+  { n:5, key:"support",    q:"What institutional support or expenditure is required?", hint:"Select all that apply. These selections determine the relevant review areas.", xw:["Q02","Q26","Q41","Q48","Q53","Q54","Q55","Q61"] },
+  { n:6, key:"exposure",   q:"What are the potential consequences of failure or misuse?", xw:["Q31","Q33","Q52","Q58"] },
+  { n:7, key:"licensing",  q:"Are the licensing and usage rights suitable?", label:"License, design rights and known obligations", hint:"Identify the license and permission to use, modify, distribute or fabricate. Include dependency obligations. Unknown is acceptable and creates a follow-up.", xw:["Q03","Q04","Q05","Q06","Q07","Q53"], auto:true },
+  { n:8, key:"maintenance",q:"What maintenance and continuity arrangements are available?", label:"Available support and continuity", hint:"Name actual maintainer / supplier availability and your team's capacity. Explain what happens if support or funding stops.", xw:["Q08","Q10","Q14","Q16","Q23","Q24","Q25","Q26","Q27","Q43","Q44","Q45","Q46","Q47"], auto:true },
+  { n:9, key:"resources",  q:"What resources and validation procedures are required?", label:"Resources, cost and acceptance", hint:"Estimate staff effort and lifecycle cost. Include practical testing, documentation, accessibility and hardware acceptance where relevant. Unknown is acceptable.", xw:["Q18","Q19","Q20","Q21","Q22","Q28","Q29","Q30","Q32","Q48","Q49","Q50","Q51","Q57"], auto:true },
+  { n:10,key:"contact",    q:"Who is responsible for coordinating this request?", label:"Research team contact and responsible unit", hint:"Identify the responsible person or role and their unit. This information is recorded in the downloaded record only; no notification is sent.", xw:["Q49","Q59","Q60","Q62"] }
+];
+
+function emptyForm(){ return { objective:"", rationale:"", candidate:"", type:"software", version:"", repoUrl:"", use:"", support:[], data:"public", systems:"local", impact:"moderate", clinical:"unknown", licensing:"", maintenance:"", resources:"", contact:"", drafts:{} }; }
+
+// Derive the flags the route logic uses from the form
+function formToContext(f){
+  const sup = new Set(f.support||[]);
+  return {
+    kind: f.type === "both" ? "both" : f.type === "hardware" ? "hardware" : "software",
+    activity: sup.has("development") ? "commissioned" : (sup.has("maintenance") || sup.has("hosting") || sup.has("training") || sup.has("funding")) ? "services" : "reuse",
+    sensitiveData: f.data && f.data !== "public",
+    externalService: f.systems === "institutional" || sup.has("hosting"),
+    materialDependency: f.impact === "high",
+    clinical: f.clinical === "yes",
+    clinicalUnknown: f.clinical === "unknown",
+    hardwareWork: sup.has("equipment") || f.type === "hardware" || f.type === "both"
+  };
+}
+
+// Draft answers for 7, 8, 9 from repository signals. Plain sentences the researcher can edit.
+function draftAnswers(S){
+  if(!S || !S.ok) return {};
+  const L = S.license, A = S.activity, P = S.people, F = S.files, I = S.issues, sc = S.scorecard; const d = daysSince(S.meta.pushedAt);
+  const lic = [];
+  if(L.spdx && L.spdx !== "unrecognized") lic.push(`License detected: ${L.spdx}${L.name && L.name !== L.spdx ? ` (${L.name})` : ""}${L.osi ? ", OSI-approved" : L.hardware ? ", an open hardware/content license" : ", not on the OSI list used here"}.`);
+  else if(L.spdx === "unrecognized") lic.push("A license file exists but the host could not identify it; it needs reading.");
+  else lic.push("Unknown: no license detected in the repository; license and intended-use obligations need review.");
+  if(F.license) lic.push("A LICENSE file is present at the repository root.");
+  if(F.manifests && F.manifests.length) lic.push(`Dependency manifests found (${F.manifests.join(", ")}); dependency licenses have not been reviewed.`);
+  if(F.hardware && F.hardware.length) lic.push(`Hardware design files are present (${F.hardware.slice(0,4).join(", ")}${F.hardware.length>4?", …":""}); check that the license covers fabrication and design modifications.`);
+  if(F.contributing) lic.push("A CONTRIBUTING file exists; contribution terms (CLA/DCO) still to be read.");
+
+  const m = [];
+  m.push(S.meta.archived ? "The upstream repository is archived (read-only)." : d == null ? "" : `Last activity ${d} days ago${A.commits90d != null ? `, ${A.commits90d}${A.commits90dCapped?"+":""} commits in the last 90 days` : ""}.`);
+  if(A.latestRelease) m.push(`Latest release ${A.latestRelease.tag || A.latestRelease.name} on ${fmtDate(A.latestRelease.date)}; ${A.releasesLastYear} release${A.releasesLastYear===1?"":"s"} in the last 12 months.`); else if(A.latestTag) m.push(`No releases published; latest tag ${A.latestTag}.`); else m.push("No releases found.");
+  if(P.contributorsCount != null) m.push(`${P.contributorsCount}${P.contributorsCapped?"+":""} contributors; the top contributor accounts for ${pct(P.topShare)} of counted contributions${P.recentAuthors != null ? `; ${P.recentAuthors} distinct authors in the last 90 days` : ""}.`);
+  if(I.closed180d != null) m.push(`${I.opened180d ?? "—"} issues opened and ${I.closed180d} closed in the last 180 days${I.merged180d != null ? `; ${I.merged180d} pull requests merged` : ""}.`);
+  if(F.governance || F.maintainers) m.push(`Governance or maintainer documentation present (${[F.governance, F.maintainers].filter(Boolean).join(", ")}).`); else m.push("No governance or maintainers file found; decision authority needs asking.");
+  m.push(F.funding ? `A funding declaration exists (${F.funding}).` : "No funding declaration found.");
+  m.push("Still to confirm: actual maintainer or supplier availability for this request, our team's capacity, and the institutional fallback if support stops.");
+
+  const r = [];
+  const docs = [F.readme && "README", F.contributing && "CONTRIBUTING", F.docsDir && F.docsDir + "/", F.changelog && "changelog"].filter(Boolean);
+  r.push(docs.length ? `Documentation present: ${docs.join(", ")}.` : "No standard documentation files found.");
+  r.push(F.workflows && F.workflows.length ? `Continuous integration configured (${F.workflows.length} workflow${F.workflows.length===1?"":"s"})${F.testsDir ? " and a tests folder is present" : ""}.` : F.testsDir ? "A tests folder is present but no CI configuration was found." : "No tests or CI configuration found.");
+  r.push(F.security ? "A security policy (vulnerability disclosure route) is published." : "No security policy found; there is no documented route to report vulnerabilities.");
+  if(sc){ const low = Object.entries(sc.checks).filter(([k,v]) => v.score != null && v.score >= 0 && v.score < 4).map(([k]) => k); r.push(`OpenSSF Scorecard ${sc.score != null ? sc.score.toFixed(1) : "—"}/10${low.length ? ` (low: ${low.join(", ")})` : ""}.`); }
+  if(F.dependabot || F.renovate) r.push("Automated dependency updates are configured.");
+  r.push("Still to estimate: staff effort, lifecycle cost including exit, and acceptance tests" + (F.hardware && F.hardware.length ? " including fabrication, calibration and safety checks" : "") + ".");
+  return { licensing: lic.filter(Boolean).join(" "), maintenance: m.filter(Boolean).join(" "), resources: r.filter(Boolean).join(" ") };
+}
+// ---------- Review areas for the procurement officer ----------
+// Which areas apply is decided by the researcher's answers (support required, exposure, type) and the baseline signals.
+// Each area bundles the crosswalk questions it stands on; the officer marks the area, not the questions.
+const AREAS = [
+  { id:"need", name:"Need and fit", always:true, from:[1,2,4], xw:["Q01","Q02","Q36","Q37","Q38","Q39","Q40"],
+    check:"The need is stated in the researcher's own terms, alternatives were considered, and the project fits the platforms, languages and users described." },
+  { id:"licensing", name:"Licensing and rights", always:true, from:[7], xw:["Q03","Q04","Q05","Q06","Q07","Q53"],
+    check:"The license is identified and allows the intended use, modification, distribution or fabrication; dependency and contribution obligations are understood.",
+    specialist:(x,S) => S && S.ok && (!S.license.spdx || S.license.spdx === "unrecognized" || (!S.license.osi && !S.license.hardware)) ? "legal" : null },
+  { id:"continuity", name:"Maintenance and continuity", always:true, from:[8], xw:["Q08","Q09","Q10","Q11","Q12","Q13","Q14","Q15","Q16","Q17","Q23","Q24","Q25","Q26","Q27","Q42","Q43","Q44","Q45","Q46","Q47"],
+    check:"The project is alive, decisions have an identifiable owner, maintainers are reachable, and there is a plan for what happens if support or funding stops." },
+  { id:"security", name:"Security and dependencies", always:true, from:[9], xw:["Q28","Q29","Q30","Q32","Q50","Q51"],
+    check:"There is a route to report vulnerabilities, releases and dependencies are kept current, and known vulnerabilities are handled.",
+    specialist:(x) => x.externalService ? "information security" : null },
+  { id:"privacy", name:"Privacy and data protection", when:(x) => x.sensitiveData, from:[6], xw:["Q31","Q52"],
+    check:"Personal or sensitive data is identified, the processing and any provider access are documented, and the data protection process has been engaged.", specialist:() => "privacy / data protection" },
+  { id:"accessibility", name:"Accessibility", when:(x,f) => f.systems !== "local", from:[4,6], xw:["Q33"],
+    check:"Users beyond the research team can use the interface; accessibility evidence or a roadmap exists.", specialist:() => "accessibility" },
+  { id:"provider", name:"Provider and contract", when:(x,f) => (f.support||[]).some(k => ["maintenance","hosting","development","training","funding"].includes(k)), from:[5], xw:["Q26","Q41","Q52","Q54","Q55","Q56","Q61"],
+    check:"There is a signable counterparty with source-level capability, the scope of support and system access is defined, and contract terms (indemnity, liability, IP, warranty) do not block the case.", specialist:() => "contracts / legal" },
+  { id:"hardware", name:"Hardware fabrication, acceptance and safety", when:(x,f) => x.hardwareWork || x.clinical || x.clinicalUnknown && x.hardwareWork, from:[3,4,5,6], xw:["Q57","Q58","Q59","Q60"],
+    check:"The device can be specified, fabricated and accepted; physical safety and any clinical authorisation have a named reviewer; institutional mechanisms and the TTO allow the procurement.",
+    specialist:(x) => x.clinical ? "specialist safety / clinical review" : x.clinicalUnknown ? "safety review (clinical relevance to confirm)" : null },
+  { id:"cost", name:"Cost and institutional capacity", when:(x,f) => (f.support||[]).some(k => k !== "none") || x.materialDependency, from:[5,9], xw:["Q48","Q49"],
+    check:"Lifecycle cost including exit is estimated, and the institution can operate and support it after the grant." },
+  { id:"ownership", name:"Ownership and review", always:true, from:[10], xw:["Q62","Q49"],
+    check:"A named owner holds the decision and its conditions; post-award obligations and a review trigger are recorded." }
+];
+const AREA_VERDICTS = [["ok","Sufficient"],["followup","Needs follow-up"],["refer","Refer to specialist"],["na","Not applicable"]];
+const AREA_VLABEL = Object.fromEntries(AREA_VERDICTS);
+
+function activeAreas(c){ const x = formToContext(c.form); return AREAS.filter(a => a.always || (a.when && a.when(x, c.form))); }
+function inactiveAreas(c){ const act = new Set(activeAreas(c).map(a => a.id)); return AREAS.filter(a => !act.has(a.id)); }
+function areaSpecialist(a, c){ return a.specialist ? a.specialist(formToContext(c.form), c.signals) : null; }
+function areaEvidence(a, c){
+  const E = c.evidence || {}; const items = []; const seen = new Set();
+  a.xw.forEach(id => { const ev = E[id]; if(!ev || !ev.items) return; ev.items.forEach(it => { const k = it.label + "|" + it.value; if(it.src === "toolkit" || seen.has(k)) return; seen.add(k); items.push(it); }); });
+  return items;
+}
+function areaSignalSummary(a, c){
+  const items = areaEvidence(a, c); if(!items.length) return null;
+  const n = { ok:0, bad:0, mixed:0 }; items.forEach(i => { if(i.ok === true) n.ok++; else if(i.ok === false) n.bad++; else if(i.ok === "mixed") n.mixed++; });
+  return { count: items.length, ok: n.ok, bad: n.bad, mixed: n.mixed, state: n.bad ? "bad" : n.mixed ? "warn" : n.ok ? "ok" : "none" };
+}
+// ---------- Example request: Jupyter Notebook ----------
+// Illustrative snapshot of github.com/jupyter/notebook for the demo roles. It is NOT a live reading:
+// figures are plausible for the project but were not fetched. "Read live" replaces it with real signals.
+function mockSignals(){
+  const ago = (d) => new Date(Date.now() - d*864e5).toISOString();
+  const checks = { "Maintained":{score:10,reason:"30 commit(s) and 25 issue activity found in the last 90 days"}, "License":{score:10,reason:"license file detected"}, "Security-Policy":{score:10,reason:"security policy file detected"}, "CI-Tests":{score:10,reason:"all CI tests passed"}, "Code-Review":{score:8,reason:"most changes are reviewed"}, "Signed-Releases":{score:-1,reason:"no releases found in the release workflow"}, "Branch-Protection":{score:3,reason:"branch protection is not maximal"}, "Dependency-Update-Tool":{score:10,reason:"update tool detected"}, "Pinned-Dependencies":{score:4,reason:"dependencies not pinned by hash"}, "Vulnerabilities":{score:10,reason:"0 existing vulnerabilities detected"}, "SAST":{score:7,reason:"SAST tool detected"}, "Fuzzing":{score:0,reason:"project is not fuzzed"}, "Token-Permissions":{score:5,reason:"some workflow tokens have write permissions"}, "Binary-Artifacts":{score:10,reason:"no binaries found"}, "Dangerous-Workflow":{score:10,reason:"no dangerous workflow patterns detected"}, "Packaging":{score:10,reason:"packaging workflow detected"}, "Contributors":{score:10,reason:"project has contributors from several organizations"}, "CII-Best-Practices":{score:0,reason:"no effort to earn an OpenSSF best practices badge"} };
+  Object.values(checks).forEach(c => { c.url = "https://github.com/ossf/scorecard/blob/main/docs/checks.md"; });
+  return {
+    ok:true, example:true, source:"GitHub (example snapshot)", host:"github.com", owner:"jupyter", repo:"notebook", url:"https://github.com/jupyter/notebook", fetchedAt: ago(1),
+    meta: { description:"Jupyter Interactive Notebook", homepage:"https://jupyter-notebook.readthedocs.io", archived:false, disabled:false, fork:false, createdAt:"2015-04-09T00:00:00Z", pushedAt: ago(3), defaultBranch:"main", stars:12300, forks:5200, watchers:600, topics:["jupyter","notebook","jupyterlab"], hasIssues:true, hasDiscussions:true, hasWiki:false, visibility:"public", language:"Jupyter Notebook" },
+    license: { spdx:"BSD-3-Clause", name:"BSD 3-Clause \"New\" or \"Revised\" License", url:"https://github.com/jupyter/notebook/blob/main/LICENSE", osi:true, hardware:false },
+    community: { health: 100, description:"Jupyter Interactive Notebook", documentation:"https://jupyter-notebook.readthedocs.io" },
+    files: { readme:"README.md", license:"LICENSE", contributing:"CONTRIBUTING.md", codeOfConduct:"CODE_OF_CONDUCT.md", security:"SECURITY.md", governance:null, maintainers:null, roadmap:null, changelog:"CHANGELOG.md", citation:null, codemeta:null, support:null, funding:null, docsDir:"docs", testsDir:null, dependabot:".github/dependabot.yml", renovate:null, ciFile:null, issueTemplate:".github/ISSUE_TEMPLATE", prTemplate:null, workflows:["build.yml","check-release.yml","docs.yml","enforce-label.yml","prep-release.yml","publish-release.yml","ui-tests.yml","update-snapshots.yml"], manifests:["package.json","pyproject.toml"], hardware:[], preCommit:".pre-commit-config.yaml" },
+    people: { contributorsCount:100, contributorsCapped:true, contributorsPages:4, topShare:0.22, top3Share:0.48, recentAuthors:9 },
+    activity: { commits90d:41, commits90dCapped:false, releasesCount:10, releasesCapped:true, latestRelease:{ tag:"v7.4.5", name:"v7.4.5", date: ago(18), url:"https://github.com/jupyter/notebook/releases", prerelease:false }, latestTag:null, releasesLastYear:9 },
+    issues: { open:420, closed180d:96, opened180d:131, merged180d:84 },
+    scorecard: { score:7.1, date: ago(2).slice(0,10), version:"v5", commit:"example", checks, url:"https://scorecard.dev/viewer/?uri=github.com/jupyter/notebook" },
+    errors: []
+  };
+}
+function mockCase(){
+  const c = newCase("https://github.com/jupyter/notebook", "Jupyter Notebook");
+  c.example = true;
+  Object.assign(c.form, {
+    objective:"Provide a shared computational notebook environment for the graduate data-analysis course and for reproducible lab workflows.",
+    rationale:"Students and staff already use Jupyter; notebooks are the de facto format for sharing analyses and the lab's methods must be reproducible by others. Commercial hosted notebooks were considered but lock data into a vendor and cost per seat.",
+    candidate:"Jupyter Notebook", type:"software", version:"7.x", repoUrl:"https://github.com/jupyter/notebook",
+    use:"About 60 students and 12 researchers; runs on the department's Linux server behind single sign-on; must work with the HPC cluster's Python environments and the institutional storage. Local IT will deploy it; the course starts in February.",
+    support:["maintenance","training"], data:"internal", systems:"shared", impact:"moderate", clinical:"no",
+    contact:"Dr A. Example, Department of Earth Sciences"
+  });
+  c.signals = mockSignals(); c.evidence = deriveEvidence(c.signals);
+  const d = draftAnswers(c.signals); c.form.drafts = d; c.form.licensing = d.licensing; c.form.maintenance = d.maintenance; c.form.resources = d.resources;
+  c.ui.ev = {};
+  return c;
+}
+// ---------- Feedback to the project owners ----------
+// Gaps the reviewer can flag upstream, derived from the repository signals. Each gap says what is missing,
+// why it matters to an institutional buyer, and what would close it. The reviewer picks which to send and edits the text.
+function detectGaps(S){
+  if(!S || !S.ok) return [];
+  const F = S.files, L = S.license, P = S.people, A = S.activity, sc = S.scorecard; const g = [];
+  const check = (n) => sc && sc.checks && sc.checks[n];
+  const low = (n, t) => { const c = check(n); return c && c.score != null && c.score >= 0 && c.score < t; };
+  if(!L.spdx) g.push({ id:"license", title:"No license detected", why:"Without a recognised license the institution cannot establish what it may use, modify or distribute.", ask:"Add a LICENSE file with an OSI-approved (or, for hardware, CERN-OHL/TAPR) license and state it in the README." });
+  else if(L.spdx === "unrecognized") g.push({ id:"license", title:"License file not machine-recognisable", why:"Automated checks and institutional reviewers cannot identify the terms without reading the file.", ask:"Use the standard text of the license and name its SPDX identifier in the README and package metadata." });
+  if(!F.security) g.push({ id:"security", title:"No security policy", why:"Institutional security review expects a documented way to report vulnerabilities and an indication of response times.", ask:"Add a SECURITY.md with a contact (or a private reporting route) and what reporters can expect." });
+  if(!F.governance && !F.maintainers) g.push({ id:"governance", title:"No governance or maintainers document", why:"Buyers need to know who can make decisions and who to contact about support arrangements.", ask:"Add a GOVERNANCE.md or MAINTAINERS file naming the decision-makers and how decisions are made." });
+  if(!F.funding && !F.support) g.push({ id:"support-route", title:"No stated way to fund or buy support", why:"Institutions can rarely pay an individual; they need a signable counterparty (a fiscal host, foundation or company) and a description of what support is available.", ask:"Add a SUPPORT.md or FUNDING.yml describing how an organisation can fund the project or purchase support, naming the entity that can sign." });
+  else if(!F.support) g.push({ id:"support-options", title:"Support options not documented", why:"Procurement needs to know what support exists and where its boundaries are before it can contract for it.", ask:"Add a SUPPORT.md listing the available support routes (community, paid, hosting) and who provides them." });
+  if(!F.contributing) g.push({ id:"contributing", title:"No contribution guide", why:"Buyers who fund modifications need to know whether and how changes can be submitted upstream.", ask:"Add a CONTRIBUTING.md covering how changes are proposed, reviewed and accepted, and any contributor agreement." });
+  if(!F.codeOfConduct) g.push({ id:"conduct", title:"No code of conduct", why:"Institutions check that community spaces their staff will join have a conduct policy and a response process.", ask:"Add a CODE_OF_CONDUCT.md with a named contact." });
+  if(!F.readme) g.push({ id:"readme", title:"No README", why:"Reviewers cannot establish what the project is or how to install it.", ask:"Add a README with purpose, installation and where documentation lives." });
+  if(!F.citation && !F.codemeta) g.push({ id:"citation", title:"No citation metadata", why:"Academic users need a stable way to cite the project, and reviewers use it as evidence of adoption.", ask:"Add a CITATION.cff (and optionally codemeta.json)." });
+  if(!A.latestRelease && !A.latestTag) g.push({ id:"releases", title:"No tagged releases", why:"Procurement contracts reference versions; without releases there is nothing to pin or to assess.", ask:"Publish tagged, versioned releases with notes." });
+  if(!F.changelog && (A.latestRelease || A.latestTag)) g.push({ id:"changelog", title:"No changelog", why:"Reviewers and operators need to see what changed between the version assessed and the version deployed.", ask:"Keep a CHANGELOG or release notes per release." });
+  if(!F.workflows || !F.workflows.length) g.push({ id:"ci", title:"No continuous integration found", why:"Security and operations reviews look for automated testing as evidence that releases are checked.", ask:"Add a CI workflow that runs the test suite on each change." });
+  if(!F.dependabot && !F.renovate && !(check("Dependency-Update-Tool") && !low("Dependency-Update-Tool", 7))) g.push({ id:"dep-updates", title:"No automated dependency updates", why:"Stale dependencies are the most common source of known vulnerabilities in deployed software.", ask:"Enable Dependabot or Renovate." });
+  if(low("Signed-Releases", 7) || (check("Signed-Releases") && check("Signed-Releases").score < 0 && (A.latestRelease))) g.push({ id:"signed", title:"Releases are not signed or attested", why:"Institutions increasingly require verifiable release integrity (provenance or signatures) before deployment.", ask:"Sign release artifacts or publish build provenance (for example SLSA attestations or Sigstore)." });
+  if(low("Branch-Protection", 5)) g.push({ id:"branch", title:"Weak branch protection", why:"Reviewers read unprotected release branches as a supply-chain risk.", ask:"Require reviews and status checks on the default and release branches." });
+  if(low("Pinned-Dependencies", 5)) g.push({ id:"pinning", title:"Build dependencies not pinned", why:"Unpinned build dependencies make releases hard to reproduce and to audit.", ask:"Pin dependencies in CI and build files by version or hash." });
+  if(low("Vulnerabilities", 7)) g.push({ id:"vulns", title:"Known vulnerabilities reported", why:"Open vulnerabilities in dependencies block most institutional security sign-offs.", ask:"Update or replace the affected dependencies and note the fix in release notes." });
+  if(P.topShare != null && P.topShare > 0.8 && (P.contributorsCount||0) < 10) g.push({ id:"succession", title:"Single-maintainer concentration", why:"Buyers assess continuity; a project that depends on one person needs a stated plan for what happens if they step back.", ask:"Document maintainer succession or add co-maintainers with release rights." });
+  if(!F.roadmap) g.push({ id:"roadmap", title:"No roadmap", why:"Institutions planning multi-year use want to see where the project is heading and what is out of scope.", ask:"Publish a short roadmap (a ROADMAP.md or a pinned issue)." });
+  if(F.hardware && F.hardware.length && !L.hardware) g.push({ id:"hw-license", title:"Hardware designs under a software license", why:"Software licenses do not clearly cover fabrication and physical modification; reviewers cannot confirm rights to build.", ask:"License the design files under an open hardware license (CERN-OHL-S/W/P or TAPR) alongside the software license." });
+  return g;
+}
+
+function upstreamIssueText(c, gaps){
+  const S = c.signals; const inst = (c.form.contact || "").split(",").slice(-1)[0].trim() || "our institution";
+  const title = gaps.length === 1 ? `Request from an institutional reviewer: ${gaps[0].title.toLowerCase()}` : `Request from an institutional reviewer: ${gaps.length} items that would ease procurement`;
+  const L = [];
+  L.push(`Hello,`, "", `${inst} is assessing ${c.form.candidate || S.repo} for institutional use, with the aim of paying for support rather than relying on volunteer time. The review found the project in good shape overall; the items below are what the procurement review could not find and would need before an institution can contract with the project.`, "");
+  gaps.forEach((g, i) => { L.push(`${i+1}. ${g.title}`, `   Why it matters: ${g.why}`, `   What would help: ${g.ask}`, ""); });
+  L.push(`None of this is a judgment on the project's quality; it is what institutional procurement looks for. If any item is already covered somewhere we did not find, a pointer would be enough.`, "", `This request comes from a pilot of the Fostering Innovation Network (FIN), which is testing how research institutions can procure and sustain open source software and hardware. Happy to share the assessment record on request.`, "", `Thank you for the work on ${c.form.candidate || S.repo}.`);
+  return { title, body: L.join("\n") };
+}
+
+function issueUrl(S, title, body){
+  if(!S || !S.url) return null;
+  const t = encodeURIComponent(title), b = encodeURIComponent(body);
+  if(S.host === "github.com") return `${S.url}/issues/new?title=${t}&body=${b}`;
+  if(S.source === "GitLab") return `${S.url}/-/issues/new?issue[title]=${t}&issue[description]=${b}`;
+  if(S.source.startsWith("Gitea")) return `${S.url}/issues/new?title=${t}&body=${b}`;
+  return null;
+}
+// ---------- State (in memory only; nothing is stored in the browser) ----------
+let CASE = null; let SETTINGS = { ghToken: "" };
+const HOSTED = !!(window.claude && typeof window.claude.use === "function");
+function persist(c){ c.updatedAt = new Date().toISOString(); }
+window.addEventListener("beforeunload", (e) => { if(CASE && (CASE.form.objective || CASE.signals || Object.keys(CASE.answers).length)){ e.preventDefault(); e.returnValue = ""; } });
+
+// ---------- Helpers ----------
+const h = (s) => String(s==null?"":s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]));
+const $ = (sel, el) => (el||document).querySelector(sel);
+function toast(msg){ const t = document.createElement("div"); t.className = "toast"; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 3600); }
+const DECISION = { proceed:"Proceed", "proceed-conditions":"Proceed with conditions", refer:"Refer to specialist review", decline:"Do not proceed", open:"Decision open" };
+const label = (opts, v) => (opts.find(o => o[0] === v) || [v, v])[1];
+
+function ctxOf(c){ return formToContext(c.form); }
+function caseTitle(c){ const o = (c.form.objective||"").trim(); if(o) return o.length > 70 ? o.slice(0, 67).replace(/\s+\S*$/,"") + "…" : o; return c.form.candidate || "Untitled assessment"; }
+function newCase(repoUrl, candidate){ const f = emptyForm(); f.repoUrl = repoUrl || ""; f.candidate = candidate || ""; return { createdAt: new Date().toISOString(), form: f, answers: {}, ownership: {}, signals: null, evidence: {}, ui: { filter:"all", open:{}, ev:{} } }; }
+
+// ---------- Router ----------
+function route(){
+  const view = (location.hash || "#home").slice(1);
+  document.querySelectorAll("nav.main a").forEach(a => a.removeAttribute("aria-current"));
+  const navKey = ["form","report","review"].includes(view) ? "home" : view;
+  const na = document.querySelector(`nav.main a[data-nav="${navKey}"]`); if(na) na.setAttribute("aria-current","page");
+  const app = $("#app");
+  if(view === "form" && CASE) app.innerHTML = viewForm(CASE);
+  else if(view === "report" && CASE) app.innerHTML = viewReport(CASE);
+  else if(view === "review" && CASE) app.innerHTML = viewReview(CASE);
+  else if(view === "about") app.innerHTML = viewAbout();
+  else if(view === "sources") app.innerHTML = viewSources();
+  else app.innerHTML = viewHome();
+  window.scrollTo({ top: 0 });
+}
+window.addEventListener("hashchange", route);
+
+// ---------- Home: one input ----------
+function viewHome(){
+  return `
+  <section class="hero">
+    <p class="eyebrow">Fostering Innovation Network · pilot portal</p>
+    <h1>Make it easy for your institution to adopt and support open source</h1>
+    <p class="muted lead">Describe what you need. The toolkit checks the project and prepares the review.</p>
+    <div class="roles">
+      <a class="role" href="#home" data-act="role-researcher"><span class="eyebrow">I am a researcher</span><b>Describe a request</b><span class="small muted">See the form filled in for an example request: Jupyter Notebook for a graduate course. Then start your own.</span></a>
+      <a class="role" href="#home" data-act="role-reviewer"><span class="eyebrow">I am a reviewer</span><b>Review a request</b><span class="small muted">See the procurement review of the same example: the areas that apply, the signals, and the record.</span></a>
+    </div>
+    <form id="startForm" class="start">
+      <input type="url" id="startUrl" name="url" placeholder="Or paste your own repository link: https://github.com/org/project" aria-label="Repository link" autocomplete="off">
+      <button class="btn primary big" type="submit">Start</button>
+    </form>
+    <p class="small muted">GitHub, GitLab and Codeberg links work. <a href="#home" data-act="no-repo">No link yet? Start anyway</a>${HOSTED ? "" : ` · <a href="#home" data-act="token">Add a GitHub token</a>`}</p>
+    <div id="startExtra" class="card stack" hidden></div>
+    ${CASE && !CASE.example ? `<p><a class="btn" href="#form">Continue: ${h(caseTitle(CASE))}</a></p>` : ""}
+  </section>
+  <section class="howto">
+    <div class="step"><span class="n">1</span><div><b>Researcher describes the request</b><p class="small muted">Licensing, maintenance and resources are drafted from the repository. Unknown is an acceptable answer.</p></div></div>
+    <div class="step"><span class="n">2</span><div><b>The route is set</b><p class="small muted">Light review when baseline evidence is sufficient; extended when data, systems, dependency or safety call for it.</p></div></div>
+    <div class="step"><span class="n">3</span><div><b>Reviewer works through the areas that apply</b><p class="small muted">Each area carries the researcher's answer, the repository signals, and a mark. Gaps can be flagged to the project owners.</p></div></div>
+  </section>
+  <p class="small muted">Nothing is stored in this browser or anywhere else. Download the record when you are done.</p>`;
+}
+function exampleBanner(c, role){
+  if(!c.example) return "";
+  return `<div class="banner info"><b>Example request: Jupyter Notebook.</b> The answers and the repository snapshot are illustrative, not a live reading. ${!HOSTED ? `<a href="#" data-act="fetch">Read the repository live</a> · ` : ""}<a href="#${role === "reviewer" ? "form" : "review"}">Switch to the ${role === "reviewer" ? "researcher" : "reviewer"} view</a> · <a href="#home" data-act="start-own">Start your own request</a></div>`;
+}
+
+// ---------- The form ----------
+function viewForm(c){
+  const f = c.form, S = c.signals, E = c.evidence || {}; const x = ctxOf(c); const R = computeRoute(x, S, {});
+  const card = (t, body) => `<section class="card qcard" id="q${t.n}"><p class="eyebrow">${String(t.n).padStart(2,"0")}</p><h3>${h(t.q)}</h3>${body}</section>`;
+  const ta = (t, extra) => `<label class="field">${h(t.label)}${extra||""}<textarea data-f="${t.key}" rows="3">${h(f[t.key]||"")}</textarea><span class="hint">${h(t.hint)}</span></label>`;
+  const evFor = (t) => { const ids = t.xw.filter(id => E[id] && E[id].items && E[id].items.length); if(!ids.length) return ""; const items = []; const seen = new Set(); ids.forEach(id => E[id].items.forEach(it => { const k = it.label + it.value; if(it.src !== "toolkit" && !seen.has(k)){ seen.add(k); items.push(it); } })); return `<details class="evd" ${c.ui.ev[t.key] ? "open" : ""} data-evkey="${t.key}"><summary>What the repository shows <span class="muted">(${items.length} signals)</span></summary><div class="ev">${items.map(it => `<div class="evi"><span class="dot ${it.ok===true?"ok":it.ok===false?"bad":it.ok==="mixed"?"mixed":""}"></span><span class="evl">${h(it.label)}</span><span class="evv">${it.link ? `<a href="${h(it.link)}" target="_blank" rel="noopener">${h(it.value)}</a>` : h(it.value)}</span><span class="evs">${h(it.src)}</span></div>`).join("")}</div></details>`; };
+  const draftNote = (t) => f.drafts && f.drafts[t.key] ? (f[t.key] === f.drafts[t.key] ? `<span class="draft">Drafted from the repository on ${h(fmtDate(S && S.fetchedAt))}. Edit freely.</span>` : `<span class="draft">Edited. <a href="#form" data-act="redraft" data-key="${t.key}">Restore the repository draft</a></span>`) : "";
+  return `
+  <div class="formv">
+    <header class="casehead">
+      <div class="stack" style="gap:4px;min-width:0"><p class="eyebrow">Assessment</p><h1 id="caseTitle" style="font-size:clamp(22px,3vw,30px)">${h(caseTitle(c))}</h1></div>
+      <div class="row"><a class="btn small primary" href="#report">Review the record</a></div>
+    </header>
+    ${exampleBanner(c, "researcher")}
+    ${S && S.ok ? `<section class="glance">${glanceTiles(S).map(t => `<div class="tile ${t.state}"><span class="tl">${h(t.label)}</span><span class="tv">${h(t.value)}</span><span class="ts"><i></i>${h(t.word)}</span>${t.sub ? `<span class="tsub">${h(t.sub)}</span>` : ""}</div>`).join("")}</section><p class="small muted">${S.example ? "Illustrative snapshot" : "Read " + h(fmtDate(S.fetchedAt)) + " from " + h(S.source)}${S.scorecard ? ` and OpenSSF Scorecard` : ""}${S.errors.length ? `; ${S.errors.length} call${S.errors.length===1?"":"s"} failed (<a href="#form" data-act="showlog">log</a>)` : ""}. Licensing, maintenance and resources below were drafted from these signals.</p><div id="fetchLogBox" class="log" hidden>${h(S.errors.join("\n"))}</div>` : ""}
+    ${S && S.ok === false ? `<div class="banner warn"><b>Could not read the repository.</b> ${h((S.errors||[]).join(" "))} Answer the questions by hand, or fix the link in question 3.</div>` : ""}
+    ${f.repoUrl && HOSTED ? `<div class="banner info">This hosted copy cannot reach repository APIs, so nothing is drafted here. Open the toolkit from your own site to have licensing, maintenance and resources pre-filled.</div>` : ""}
+
+    ${card(TEN[0], ta(TEN[0]))}
+    ${card(TEN[1], ta(TEN[1]))}
+    ${card(TEN[2], `<div class="grid2">
+        <label class="field">Project / device / service<input type="text" data-f="candidate" value="${h(f.candidate)}" placeholder="Enter “Unknown” if not yet identified"><span class="hint">${S && S.ok && S.meta.description ? h(S.meta.description) : "Enter “Unknown” if a project or supplier has not yet been identified."}</span></label>
+        <label class="field">Type<select data-f="type">${TYPE_OPTS.map(([k,v]) => `<option value="${k}" ${f.type===k?"selected":""}>${v}</option>`).join("")}</select></label>
+        <label class="field">Version / design revision, if known<input type="text" data-f="version" value="${h(f.version)}"></label>
+        <label class="field urlfield">Project / design URL, if available<div class="row"><input type="url" data-f="repoUrl" id="repoUrlField" value="${h(f.repoUrl)}" placeholder="https://github.com/org/project">${HOSTED ? "" : `<button type="button" class="btn small" data-act="fetch" id="fetchBtn">${S && S.ok ? "Re-read" : "Read repository"}</button>`}</div><span class="hint">A GitHub, GitLab or Codeberg link lets the toolkit draft the licensing, maintenance and resources answers.</span></label>
+      </div>`)}
+    ${card(TEN[3], ta(TEN[3]))}
+    ${card(TEN[4], `<p class="small muted">${h(TEN[4].hint)}</p><div class="checks">${SUPPORT.map(([k,v]) => `<label class="check"><input type="checkbox" data-fs="${k}" ${(f.support||[]).includes(k)?"checked":""}><span>${v}</span></label>`).join("")}</div>`)}
+    ${card(TEN[5], `<div class="grid2">
+        <label class="field">Data<select data-f="data">${DATA_OPTS.map(([k,v]) => `<option value="${k}" ${f.data===k?"selected":""}>${v}</option>`).join("")}</select></label>
+        <label class="field">Systems<select data-f="systems">${SYSTEMS_OPTS.map(([k,v]) => `<option value="${k}" ${f.systems===k?"selected":""}>${v}</option>`).join("")}</select></label>
+        <label class="field">Impact of failure<select data-f="impact">${IMPACT_OPTS.map(([k,v]) => `<option value="${k}" ${f.impact===k?"selected":""}>${v}</option>`).join("")}</select></label>
+        <label class="field">Clinical / safety-critical<select data-f="clinical">${CLINICAL_OPTS.map(([k,v]) => `<option value="${k}" ${f.clinical===k?"selected":""}>${v}</option>`).join("")}</select></label>
+      </div>
+      <div id="routeBox">${routeBanner(R)}</div>`)}
+    ${card(TEN[6], ta(TEN[6], draftNote(TEN[6])) + evFor(TEN[6]))}
+    ${card(TEN[7], ta(TEN[7], draftNote(TEN[7])) + evFor(TEN[7]))}
+    ${card(TEN[8], ta(TEN[8], draftNote(TEN[8])) + evFor(TEN[8]))}
+    ${card(TEN[9], `<label class="field">${h(TEN[9].label)}<input type="text" data-f="contact" value="${h(f.contact)}" placeholder="Name or role, unit"><span class="hint">${h(TEN[9].hint)}</span></label>`)}
+    <div class="row" style="justify-content:space-between"><p class="small muted">Nothing is stored. The record is yours to download.</p><div class="row"><a class="btn primary" href="#report">Review the record</a><button class="btn" data-act="export-md">Download Markdown</button></div></div>
+  </div>`;
+}
+function routeBanner(R){
+  const main = R.triggers.filter(t => t.kind !== "follow-up"), fu = R.triggers.filter(t => t.kind === "follow-up");
+  return `<div class="banner route-${R.route}"><b>${R.route === "light" ? "Light review looks sufficient." : R.route === "extended" ? "This points to an extended review." : "Scope needs clarifying first."}</b> <span>${main.length ? "Because: " + main.map(t => h(t.text.replace(/\.$/,"")) + (t.refer ? ` (→ ${h(t.refer)})` : "")).join("; ") + "." : "No triggers from your answers or the baseline signals."}${fu.length ? " Follow-up: " + fu.map(t => h(t.text)).join(" ") : ""}</span></div>`;
+}
+
+// At-a-glance tiles: status with a word beside each dot, never color alone
+function glanceTiles(S){
+  const L = S.license, A = S.activity, P = S.people, F = S.files, sc = S.scorecard, dPush = daysSince(S.meta.pushedAt);
+  const t = [];
+  t.push(L.spdx && L.spdx !== "unrecognized" ? { label:"License", value: L.spdx, state: (L.osi||L.hardware) ? "ok" : "warn", word: L.osi ? "OSI-approved" : L.hardware ? "Open hardware" : "Check terms" } : L.spdx === "unrecognized" ? { label:"License", value:"Unrecognised", state:"warn", word:"Read the file" } : { label:"License", value:"None found", state:"bad", word:"Missing" });
+  const actState = S.meta.archived ? "bad" : dPush == null ? "none" : dPush <= 180 ? "ok" : dPush <= 365 ? "warn" : "bad";
+  t.push({ label:"Activity", value: S.meta.archived ? "Archived" : dPush == null ? "—" : dPush <= 30 ? "Active this month" : `Last push ${dPush} d ago`, state: actState, word: S.meta.archived ? "Read-only upstream" : actState === "ok" ? "Maintained" : actState === "warn" ? "Slowing" : "Stale", sub: A.latestRelease ? `Release ${A.latestRelease.tag||""} · ${fmtDate(A.latestRelease.date)}` : A.latestTag ? `Tag ${A.latestTag}, no releases` : "No releases" });
+  if(P.contributorsCount != null){ const st = P.topShare == null ? "none" : P.topShare > 0.8 ? "bad" : P.topShare > 0.5 ? "warn" : "ok"; t.push({ label:"Maintainers", value: `${P.contributorsCount}${P.contributorsCapped?"+":""} contributors`, state: st, word: st === "ok" ? "Shared load" : st === "warn" ? "Concentrated" : st === "bad" ? "One person" : "—", sub: P.topShare != null ? `Top contributor ${pct(P.topShare)} · ${P.recentAuthors ?? "—"} active in 90 d` : "" }); }
+  else t.push({ label:"Maintainers", value: `${P.recentAuthors ?? "—"} active authors`, state: P.recentAuthors >= 3 ? "ok" : P.recentAuthors >= 1 ? "warn" : "none", word: P.recentAuthors >= 3 ? "Several" : P.recentAuthors >= 1 ? "Few" : "Unknown", sub:"last 90 days" });
+  const vuln = sc && sc.checks && sc.checks["Vulnerabilities"]; const vulnBad = vuln && vuln.score != null && vuln.score >= 0 && vuln.score < 7;
+  t.push({ label:"Security", value: F.security ? "Policy present" : "No policy", state: vulnBad ? "bad" : F.security ? "ok" : "warn", word: vulnBad ? "Known vulnerabilities" : F.security ? "Disclosure route" : "No disclosure route", sub: (F.workflows && F.workflows.length ? `CI: ${F.workflows.length} workflow${F.workflows.length===1?"":"s"}` : "No CI found") + (vuln && !vulnBad && vuln.score >= 0 ? " · no known vulns" : "") });
+  const docs = [F.readme, F.contributing, F.codeOfConduct, F.docsDir].filter(Boolean).length;
+  t.push({ label:"Documentation", value: `${docs} of 4 basics`, state: docs >= 3 ? "ok" : docs >= 1 ? "warn" : "bad", word: docs >= 3 ? "Present" : docs >= 1 ? "Partial" : "Missing", sub: ["README","CONTRIBUTING","Code of conduct","docs/"].filter((_,i) => ![F.readme, F.contributing, F.codeOfConduct, F.docsDir][i]).map(x => "no " + x).join(", ") || "README, CONTRIBUTING, conduct, docs/" });
+  if(sc) t.push({ label:"OpenSSF Scorecard", value: sc.score != null ? sc.score.toFixed(1) + " / 10" : "—", state: sc.score == null ? "none" : sc.score >= 7 ? "ok" : sc.score >= 4 ? "warn" : "bad", word: sc.score == null ? "—" : sc.score >= 7 ? "Good" : sc.score >= 4 ? "Mixed" : "Low", sub: Object.entries(sc.checks).filter(([k,v]) => v.score != null && v.score >= 0 && v.score < 4).map(([k]) => k).slice(0,3).join(", ") || "no low checks" });
+  else t.push({ label:"OpenSSF Scorecard", value:"No result", state:"none", word:"Not scored", sub:"Only github.com and gitlab.com projects are scored" });
+  return t;
+}
+
+// ---------- Procurement officer review (areas switched on by the answers) ----------
+function viewReview(c){
+  const act = activeAreas(c), inact = inactiveAreas(c); const marked = act.filter(a => c.answers[a.id] && c.answers[a.id].verdict).length;
+  return `
+  <div class="formv">
+    <header class="casehead">
+      <div class="stack" style="gap:4px;min-width:0"><p class="eyebrow">Procurement officer review</p><h1 style="font-size:clamp(22px,3vw,30px)">${h(caseTitle(c))}</h1><p class="muted small">${act.length} review areas apply to this request, set by the researcher's answers. Each shows what to check, the researcher's answer and what the repository shows. Mark each area and note what was done.</p></div>
+      <div class="row"><a class="btn small" href="#form">Request form</a><a class="btn small primary" href="#report">Record</a></div>
+    </header>
+    ${exampleBanner(c, "reviewer")}
+    <p class="small muted num">${marked}/${act.length} areas marked</p>
+    <div class="areas">${act.map(a => renderArea(c, a)).join("")}</div>
+    ${inact.length ? `<details class="small muted"><summary>Not triggered by this request: ${inact.map(a => h(a.name)).join(", ")}</summary><p style="padding-top:6px">These areas switch on when the answers change (for example data that is not public, a paid provider, shared systems, or physical hardware).</p></details>` : ""}
+    ${renderUpstream(c)}
+    <section class="card stack" id="decision">
+      <h3>Decision record</h3>
+      <div class="grid2">
+        <label class="field">Decision owner <input type="text" data-own="owner" value="${h(c.ownership.owner||"")}" placeholder="Name, role"></label>
+        <label class="field">Operational owner after award <input type="text" data-own="operator" value="${h(c.ownership.operator||"")}" placeholder="Who runs and maintains it"></label>
+        <label class="field">Review date <input type="date" data-own="reviewDate" value="${h(c.ownership.reviewDate||"")}"></label>
+        <label class="field">Review trigger <input type="text" data-own="reviewTrigger" value="${h(c.ownership.reviewTrigger||"")}" placeholder="e.g. contract renewal, upstream archived"></label>
+      </div>
+      <label class="field">Conditions <textarea data-own="conditions" placeholder="e.g. support contract with a signable counterparty; security contact named; exit path documented">${h(c.ownership.conditions||"")}</textarea></label>
+      <div class="seg">${Object.entries(DECISION).map(([k,v]) => `<label><input type="radio" name="decision" value="${k}" ${(c.ownership.decision||"open")===k?"checked":""}>${k==="open"?"Open":v}</label>`).join("")}</div>
+      <div class="row"><a class="btn primary" href="#report">Open the record</a><button class="btn" data-act="export-md">Download Markdown</button><button class="btn" data-act="export-json">Download JSON</button></div>
+    </section>
+  </div>`;
+}
+function renderUpstream(c){
+  const S = c.signals; if(!S || !S.ok) return `<section class="card stack" id="upstream"><h3>Feedback to the project</h3><p class="small muted">Once the repository has been read, the gaps it shows can be flagged to the project owners from here.</p></section>`;
+  const gaps = detectGaps(S); c.upstream = c.upstream || { selected: null, text: null, sent: false };
+  if(!c.upstream.selected) c.upstream.selected = gaps.map(g => g.id);
+  const sel = gaps.filter(g => c.upstream.selected.includes(g.id)); const draft = upstreamIssueText(c, sel);
+  const body = c.upstream.text != null ? c.upstream.text : draft.body; const url = issueUrl(S, draft.title, body);
+  return `<section class="card stack" id="upstream">
+    <div><p class="eyebrow">Route to the project owners</p><h3>Feedback to the project</h3><p class="small muted">What the repository is missing from an institutional buyer's point of view. Tick what to send; the message is drafted below and can be edited, copied, or opened as an issue on ${h(S.host)}.</p></div>
+    ${gaps.length ? `<div class="gaps">${gaps.map(g => `<label class="check gap"><input type="checkbox" data-gap="${g.id}" ${c.upstream.selected.includes(g.id)?"checked":""}><span><b>${h(g.title)}</b><span class="why">${h(g.ask)}</span></span></label>`).join("")}</div>` : `<p class="small">Nothing to flag: the signals the toolkit checks are all present.</p>`}
+    ${gaps.length ? `<label class="field">Message <span class="hint">${c.upstream.text != null ? `Edited. <a href="#review" data-act="upstream-reset">Restore the drafted text</a>` : "Drafted from the ticked items. Edit freely."}</span><textarea id="upstreamText" rows="12" style="font-size:13.5px">${h(body)}</textarea></label>
+    <div class="row"><button class="btn primary" data-act="upstream-copy">Copy message</button>${url ? `<a class="btn" href="${h(url)}" target="_blank" rel="noopener">Open as an issue on ${h(S.host)} ↗</a>` : ""}<button class="btn" data-act="upstream-md">Download as Markdown</button><label class="check small" style="margin-left:auto;padding:6px 10px"><input type="checkbox" data-upstream-sent ${c.upstream.sent?"checked":""}><span>Sent to the project</span></label></div>
+    <p class="small muted">The issue link opens the project's tracker with the title and text filled in; nothing is posted until you submit it there.</p>` : ""}
+  </section>`;
+}
+function researcherText(c, n){ const t = TEN[n-1]; return tenAnswer(c, t); }
+function renderArea(c, a){
+  const ans = c.answers[a.id] || {}; const v = ans.verdict || ""; const sp = areaSpecialist(a, c); const sum = areaSignalSummary(a, c); const items = areaEvidence(a, c); const open = c.ui.open[a.id];
+  return `<article class="area ${v}" data-area="${a.id}">
+    <div class="ahead">
+      <div class="stack" style="gap:4px;min-width:0">
+        <h3>${h(a.name)}${sp ? ` <span class="specialist">→ ${h(sp)}</span>` : ""}</h3>
+        <p class="small">${h(a.check)}</p>
+        ${sum ? `<p class="small sig ${sum.state}"><i></i>${sum.count} repository signal${sum.count===1?"":"s"}: ${sum.ok} positive${sum.mixed ? `, ${sum.mixed} to check` : ""}${sum.bad ? `, ${sum.bad} missing or negative` : ""}</p>` : `<p class="small muted">No repository signals for this area; rely on the researcher's answer and your own checks.</p>`}
+      </div>
+      <div class="seg">${AREA_VERDICTS.map(([k,l]) => `<label><input type="radio" name="a-${a.id}" value="${k}" data-area-verdict="${a.id}" ${v===k?"checked":""}>${l}</label>`).join("")}</div>
+    </div>
+    <div class="ev"><div class="evi"><span class="dot ok"></span><span class="evl">Researcher</span><span class="evv">${a.from.map(n => `<b>${String(n).padStart(2,"0")}</b> ${h(researcherText(c, n) || "—")}`).join("<br>")}</span></div></div>
+    ${items.length ? `<details class="evd" ${open ? "open" : ""} data-evkey="${a.id}"><summary>What the repository shows <span class="muted">(${items.length})</span></summary><div class="ev">${items.map(it => `<div class="evi"><span class="dot ${it.ok===true?"ok":it.ok===false?"bad":it.ok==="mixed"?"mixed":""}"></span><span class="evl">${h(it.label)}</span><span class="evv">${it.link ? `<a href="${h(it.link)}" target="_blank" rel="noopener">${h(it.value)}</a>` : h(it.value)}</span><span class="evs">${h(it.src)}</span></div>`).join("")}</div></details>` : ""}
+    <label class="field">Notes <textarea data-area-note="${a.id}" placeholder="What was checked, by whom, and where it is documented">${h(ans.note||"")}</textarea></label>
+    <details class="small"><summary class="muted">Crosswalk questions behind this area</summary><ul class="xwl">${a.xw.map(id => QBYID[id] ? `<li><span class="mono">${id}</span> ${h(QBYID[id].q)}</li>` : "").join("")}</ul></details>
+  </article>`;
+}
+function shortEvidence(ev){ if(!ev || !ev.items || !ev.items.length) return ""; const it = ev.items.find(i => i.src !== "toolkit") || ev.items[0]; return `${it.label}: ${it.value}`.slice(0, 110); }
+
+// ---------- Record ----------
+function routePill(r){ return r === "light" ? `<span class="pill ok">Light review</span>` : r === "extended" ? `<span class="pill warn">Extended review</span>` : `<span class="pill info">Clarify scope</span>`; }
+function evidenceSnapshotRows(S){
+  const files = ["readme","license","contributing","codeOfConduct","security","governance","maintainers","roadmap","changelog","citation","codemeta","funding","docsDir","testsDir"].filter(k => S.files[k]).map(k => String(S.files[k]));
+  return [
+    ["License", `${S.license.spdx || "none detected"}${S.license.osi ? " (OSI-approved)" : S.license.hardware ? " (open hardware / content license)" : ""}`],
+    ["Activity", `last push ${fmtDate(S.meta.pushedAt)}; ${S.activity.commits90d ?? "—"}${S.activity.commits90dCapped?"+":""} commits in 90 days; ${S.activity.latestRelease ? "latest release " + (S.activity.latestRelease.tag||"") + " " + fmtDate(S.activity.latestRelease.date) : "no releases"}${S.meta.archived ? "; ARCHIVED" : ""}`],
+    ["People", `${S.people.contributorsCount != null ? S.people.contributorsCount + (S.people.contributorsCapped?"+":"") + " contributors; top contributor " + pct(S.people.topShare) : "contributor data not available"}; ${S.people.recentAuthors ?? "—"} distinct authors in 90 days`],
+    ["Issues", `${S.issues.open ?? "—"} open; ${S.issues.opened180d ?? "—"} opened / ${S.issues.closed180d ?? "—"} closed in 180 days; ${S.issues.merged180d ?? "—"} merged PRs/MRs`],
+    ["Files", `${files.join(", ") || "none detected"}${S.files.workflows && S.files.workflows.length ? "; CI: " + S.files.workflows.join(", ") : ""}${S.files.manifests && S.files.manifests.length ? "; manifests: " + S.files.manifests.join(", ") : ""}${S.files.hardware && S.files.hardware.length ? "; hardware: " + S.files.hardware.slice(0,8).join(", ") : ""}`],
+    S.scorecard ? ["Scorecard checks", Object.entries(S.scorecard.checks).sort((a,b)=>(a[1].score??-1)-(b[1].score??-1)).map(([k,v]) => `${k} ${v.score==null||v.score<0?"n/a":v.score}`).join(" · ")] : null
+  ].filter(Boolean);
+}
+function tenAnswer(c, t){
+  const f = c.form;
+  if(t.key === "candidate") return `${f.candidate || "—"} · ${label(TYPE_OPTS, f.type)}${f.version ? " · " + f.version : ""}${f.repoUrl ? " · " + f.repoUrl : ""}`;
+  if(t.key === "support") return (f.support||[]).map(k => label(SUPPORT,k)).join("; ") || "—";
+  if(t.key === "exposure") return `Data: ${label(DATA_OPTS,f.data)} · Systems: ${label(SYSTEMS_OPTS,f.systems)} · Impact of failure: ${label(IMPACT_OPTS,f.impact)} · Clinical / safety-critical: ${label(CLINICAL_OPTS,f.clinical)}`;
+  return f[t.key] || "—";
+}
+function viewReport(c){
+  const S = c.signals; const E = c.evidence || {}; const x = ctxOf(c); const R = computeRoute(x, S, {}); const own = c.ownership || {};
+  const specialist = [...new Set(R.triggers.filter(t => t.refer).map(t => t.refer))];
+  const unknowns = TEN.filter(t => /^unknown/i.test(String(c.form[t.key]||"").trim())).map(t => t.n);
+  return `
+  <div class="row noprint" style="justify-content:space-between"><div class="row"><a class="btn" href="#form">← Researcher form</a><a class="btn" href="#review">Procurement officer review</a></div><div class="row"><button class="btn" data-act="export-md">Download Markdown</button><button class="btn" data-act="export-json">Download JSON</button>${HOSTED ? "" : `<button class="btn primary" data-act="print">Print / save as PDF</button>`}</div></div>
+  <article class="report" id="reportDoc">
+    <header class="stack">
+      <p class="eyebrow">FIN open source procurement toolkit · assessment record</p>
+      <h1 style="font-size:26px">${h(caseTitle(c))}</h1>
+      <dl class="kv"><dt>Candidate</dt><dd>${h(tenAnswer(c, TEN[2]))}</dd><dt>Contact</dt><dd>${h(c.form.contact||"—")}</dd><dt>Date</dt><dd>${h(fmtDate(c.updatedAt || c.createdAt))}</dd></dl>
+    </header>
+    <section class="stack">
+      <h2>Route and decision</h2>
+      <div class="row">${routePill(R.route)}<span class="pill outline">${h(DECISION[own.decision||"open"])}</span></div>
+      ${R.triggers.length ? `<ul style="margin:0;padding-left:18px;font-size:13.5px">${R.triggers.map(t => `<li>${h(t.text)}${t.refer ? ` (refer: ${h(t.refer)})` : ""}</li>`).join("")}</ul>` : `<p class="small muted">No extended-review triggers.</p>`}
+      ${specialist.length ? `<p class="small">Specialist processes to involve: ${h(specialist.join("; "))}.</p>` : ""}
+      ${unknowns.length ? `<p class="small">Answers marked Unknown (follow-ups): question${unknowns.length>1?"s":""} ${unknowns.join(", ")}.</p>` : ""}
+      <dl class="kv"><dt>Decision owner</dt><dd>${h(own.owner||"—")}</dd><dt>Operational owner</dt><dd>${h(own.operator||"—")}</dd><dt>Conditions</dt><dd>${h(own.conditions||"—")}</dd><dt>Review</dt><dd>${h(own.reviewDate||"—")}${own.reviewTrigger ? " · " + h(own.reviewTrigger) : ""}</dd></dl>
+    </section>
+    <section class="stack">
+      <h2>Researcher's answers</h2>
+      <dl class="ten">${TEN.map(t => `<dt><span class="mono">${String(t.n).padStart(2,"0")}</span> ${h(t.q)}</dt><dd>${h(tenAnswer(c,t))}${t.auto && c.form.drafts && c.form.drafts[t.key] && c.form[t.key] === c.form.drafts[t.key] ? ` <span class="small muted">(drafted from repository signals, unedited)</span>` : ""}</dd>`).join("")}</dl>
+    </section>
+    ${S && S.ok ? `<section class="stack">
+      <h2>Repository evidence snapshot</h2>
+      <p class="small muted">${S.example ? "Illustrative example snapshot, not a live reading. " : ""}Fetched ${h(fmtDate(S.fetchedAt))} from ${h(S.source)}${S.scorecard ? `; OpenSSF Scorecard ${S.scorecard.score != null ? S.scorecard.score.toFixed(1) : "—"}/10 dated ${h(fmtDate(S.scorecard.date))}` : "; no Scorecard result"}. Dated signals; they do not allocate contractual responsibility.</p>
+      <dl class="kv">${evidenceSnapshotRows(S).map(([k,v]) => `<dt>${h(k)}</dt><dd>${h(v)}</dd>`).join("")}</dl>
+      ${S.errors && S.errors.length ? `<p class="small muted">Not retrieved: ${h(S.errors.join("; "))}</p>` : ""}
+    </section>` : ""}
+    <section class="stack">
+      <h2>Procurement review</h2>
+      <div class="tablewrap"><table><thead><tr><th>Area</th><th style="width:130px">Mark</th><th>Notes and signals</th></tr></thead><tbody>
+      ${activeAreas(c).map(a => { const ans = c.answers[a.id]||{}; const sp = areaSpecialist(a, c); const sum = areaSignalSummary(a, c);
+        return `<tr><td><b>${h(a.name)}</b>${sp ? `<br><span class="specialist">→ ${h(sp)}</span>` : ""}<div class="small muted">${h(a.check)}</div></td><td><span class="v ${ans.verdict||"unset"}">${h(ans.verdict ? AREA_VLABEL[ans.verdict] : "open")}</span></td><td class="small">${ans.note ? h(ans.note) + " " : ""}${sum ? `<span class="muted">${sum.count} signals: ${sum.ok} positive${sum.mixed ? `, ${sum.mixed} to check` : ""}${sum.bad ? `, ${sum.bad} missing or negative` : ""}</span>` : ""}</td></tr>`; }).join("")}
+      </tbody></table></div>
+      ${inactiveAreas(c).length ? `<p class="small muted">Not triggered by this request: ${inactiveAreas(c).map(a => h(a.name)).join(", ")}.</p>` : ""}
+    </section>
+    ${S && S.ok && c.upstream && c.upstream.selected && c.upstream.selected.length ? `<section class="stack"><h2>Feedback to the project${c.upstream.sent ? " (sent)" : " (drafted)"}</h2><ul style="margin:0;padding-left:18px;font-size:13.5px">${detectGaps(S).filter(g => c.upstream.selected.includes(g.id)).map(g => `<li><b>${h(g.title)}.</b> ${h(g.ask)}</li>`).join("")}</ul></section>` : ""}
+    <footer class="small muted">Produced with the FIN Open Source Procurement Toolkit (prototype). Question set aligned across HEOSAT, CHAOSS, OpenSSF, OSOR, IDB, HECVAT, OpenChain, OSBA and open hardware sources; see the crosswalk for criterion-level provenance.</footer>
+  </article>`;
+}
+
+// ---------- About / Sources ----------
+function viewAbout(){
+  return `
+  <section class="stack"><p class="eyebrow">About</p><h1>About this pilot portal</h1><p class="muted" style="max-width:64ch">This prototype explores how an open source software or hardware request could move through an academic procurement process while using existing assessment resources rather than creating a new maturity framework.</p></section>
+  <div class="grid2">
+    <section class="card stack"><p class="eyebrow">Responsibilities</p><h3>Who provides which information?</h3>
+      <div class="grid2"><div><h4>Researcher / requester</h4><p class="small muted">Describes the request: the research need, technical context, candidate software or hardware, links to project information, intended use, support required, exposure, licensing, continuity, resources, and the responsible contact. Three answers are drafted from the repository for the researcher to confirm or correct.</p></div>
+      <div><h4>Procurement officer</h4><p class="small muted">Checks whether the evidence is sufficient against the source crosswalk, reviews providers and purchasing terms, coordinates university reviews, and confirms that responsibilities and ongoing costs are clear.</p></div></div></section>
+    <section class="card stack"><p class="eyebrow">The pathway</p><h3>What the portal is testing</h3><p class="small muted">The FIN pilot tests whether a request can move through a documented pathway from <b>researcher input → procurement review → provider and contract review → institutional ownership</b>. Questions that require deeper technical, security, privacy, accessibility or legal analysis are referred to the institution's existing specialist processes; the toolkit marks them.</p></section>
+  </div>
+  <section class="card stack"><p class="eyebrow">Assessment routes</p><h3>Start light and expand only when needed</h3>
+    <div class="grid2"><div><h4>Light review</h4><p class="small muted">When baseline evidence is sufficient: recorded baseline evidence, relevant project questions, and the institutional checks appropriate to the proposed use.</p></div>
+    <div><h4>Extended review — triggered route</h4><p class="small muted">Additional assessment when the software or hardware handles sensitive data, supports an essential shared service, creates a material dependency, or when baseline checks raise concerns. Custom development requires clarification of scope; it does not automatically mean every specialist review is needed.</p></div></div>
+    <p class="small muted">Automation is most useful for objective repository signals such as license information, recent maintenance activity, security-policy files, standard project documentation, and documentation of maintainer contact routes. Maintainer availability requires human confirmation. Governance, meaningful prior institutional use, research fit, and long-term ownership still require human judgment.</p></section>
+  <section class="card stack"><p class="eyebrow">What is drafted automatically</p><h3>From a repository link</h3>
+    <div class="grid3">
+      <div><h4>GitHub</h4><p class="small muted">Repository metadata, community profile files, license detection, releases and tags, commits in the last 90 days, contributor concentration, issue and pull-request throughput over 180 days, root and <span class="mono">.github</span> listings (security policy, governance, roadmap, citation, funding, CI workflows, dependency bots, dependency manifests, hardware design files).</p></div>
+      <div><h4>GitLab and Codeberg</h4><p class="small muted">Project metadata and license, repository tree, releases, commits, contributors and issue statistics (GitLab); repository, tree, releases, commits and closed issues (Gitea/Forgejo). Self-hosted GitLab instances work when their API is public.</p></div>
+      <div><h4>OpenSSF Scorecard</h4><p class="small muted">Public Scorecard results for github.com and gitlab.com projects, each attached to the crosswalk question it informs.</p></div>
+    </div>
+    <p class="small muted">Licensing, maintenance and resources receive a plain-language draft built from these signals, with the signals listed underneath. The draft is editable and is marked as a draft in the record until changed. Signals are dated; re-read before a decision.</p></section>
+  <section class="card stack"><h3>Using this prototype</h3><p class="small muted">Nothing is stored: the assessment lives in the page until you leave it, so download the record as Markdown, JSON or PDF. Public repository checks run from your browser against public APIs and count against those services' anonymous rate limits (GitHub: 60 requests an hour without a token; an assessment uses about a dozen). Submission and institutional approval systems are not connected.</p></section>`;
+}
+function viewSources(){
+  const rows = SRC_ORDER.map(k => SOURCES[k]).filter(Boolean);
+  return `
+  <section class="stack"><p class="eyebrow">Sources</p><h1>Resources informing the questions</h1><p class="muted" style="max-width:64ch">The request form sits on a criterion-level comparison of these initiatives. Question wording is a concise paraphrase; original criterion IDs are retained in the crosswalk. Absence of a match does not prove absence from every version of a source.</p>
+  <p><a class="btn" href="${CROSSWALK_URL}" target="_blank" rel="noopener">Open the question crosswalk ↗</a></p></section>
+  <section class="card stack"><h3>Reading key</h3><dl class="kv" style="display:grid;grid-template-columns:max-content 1fr;gap:4px 16px;font-size:13.5px">${Object.entries(READING_KEY).map(([k,v]) => `<dt><span class="chip ${k}">${k}</span></dt><dd style="margin:0">${h(v)}</dd>`).join("")}</dl></section>
+  <section class="card stack"><h3>Initiatives and resources</h3>${rows.map(s => `<details class="src"><summary>${h(s.name)} <span class="small muted" style="font-weight:400">· ${h(s.scope)}</span></summary><p>${h(s.full)}${s.url ? ` — <a href="${h(s.url)}" target="_blank" rel="noopener">${h(s.url)}</a>` : ""}</p><p>Informs: ${QUESTIONS.filter(q => q.src[Object.keys(SOURCES).find(k=>SOURCES[k]===s)]).map(q=>q.id).join(", ") || "—"}</p></details>`).join("")}</section>`;
+}
+
+// ---------- Actions ----------
+function startCase(repoUrl, candidate){
+  CASE = newCase(repoUrl, candidate);
+  if(repoUrl){ const ref = parseRepoUrl(repoUrl); if(ref && !candidate) CASE.form.candidate = ref.repo; }
+  persist(CASE);
+  if(location.hash === "#form") route(); else location.hash = "#form";
+  if(CASE.form.repoUrl && !HOSTED) setTimeout(runFetch, 30);
+}
+document.addEventListener("submit", (e) => {
+  if(e.target.id !== "startForm") return;
+  e.preventDefault();
+  const url = $("#startUrl").value.trim(); const nameEl = $("#startName"); const tokenEl = $("#startToken");
+  if(tokenEl) SETTINGS.ghToken = tokenEl.value.trim();
+  if(url && !parseRepoUrl(url)){ toast("The link needs an owner and a project, e.g. https://github.com/org/project"); return; }
+  startCase(url, nameEl ? nameEl.value.trim() : "");
+});
+
+document.addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-act]"); if(!b) return;
+  const act = b.dataset.act; const c = CASE;
+  if(act === "role-researcher" || act === "role-reviewer"){ e.preventDefault(); if(!CASE || CASE.example) CASE = mockCase(); location.hash = act === "role-researcher" ? "#form" : "#review"; return; }
+  if(act === "start-own"){ e.preventDefault(); CASE = null; location.hash = "#home"; route(); $("#startUrl").focus(); return; }
+  if(act === "no-repo"){ e.preventDefault(); const x = $("#startExtra"); x.hidden = false; x.innerHTML = `<label class="field">Project, device or service you are considering <input type="text" id="startName" placeholder="e.g. a lab-built incubator, or “Unknown”"></label><p class="small muted">Without a repository link nothing is drafted; you answer everything yourself. You can add a link later under the project details.</p>`; $("#startName").focus(); return; }
+  if(act === "token"){ e.preventDefault(); const x = $("#startExtra"); x.hidden = false; x.innerHTML = `<label class="field">GitHub token <span class="hint">optional; kept in memory for this visit only and sent only to api.github.com. Raises the anonymous limit of 60 requests an hour.</span><input type="password" id="startToken" value="${h(SETTINGS.ghToken)}" autocomplete="off" placeholder="github_pat_…"></label>`; $("#startToken").focus(); return; }
+  if(!c) return;
+  if(act === "fetch"){ e.preventDefault(); const u = $("#repoUrlField"); if(u) c.form.repoUrl = u.value.trim(); return runFetch(); }
+  if(act === "showlog"){ e.preventDefault(); const l = $("#fetchLogBox"); if(l) l.hidden = !l.hidden; return; }
+  if(act === "redraft"){ e.preventDefault(); const k = b.dataset.key; c.form[k] = c.form.drafts[k]; persist(c); route(); return; }
+  if(act === "upstream-copy"){ const txt = $("#upstreamText").value; try { await navigator.clipboard.writeText(txt); toast("Message copied"); } catch(err){ $("#upstreamText").select(); toast("Select-all and copy; the clipboard was refused."); } return; }
+  if(act === "upstream-reset"){ e.preventDefault(); c.upstream.text = null; persist(c); route(); return; }
+  if(act === "upstream-md"){ const gaps = detectGaps(c.signals).filter(g => c.upstream.selected.includes(g.id)); const d = upstreamIssueText(c, gaps); return download(`${slug(c.form.candidate)}-upstream-feedback.md`, `# ${d.title}\n\n${$("#upstreamText") ? $("#upstreamText").value : d.body}`, "text/markdown"); }
+  if(act === "export-json") return download(`${slug(caseTitle(c))}.fin-assessment.json`, JSON.stringify(c, null, 2), "application/json");
+  if(act === "export-md") return download(`${slug(caseTitle(c))}.md`, caseMarkdown(c), "text/markdown");
+  if(act === "print"){ window.print(); return; }
+});
+document.addEventListener("toggle", (e) => { const d = e.target; if(d.dataset && d.dataset.evkey && CASE){ CASE.ui.ev[d.dataset.evkey] = d.open; } }, true);
+
+function refreshRoute(c){ const box = $("#routeBox"); if(box) box.innerHTML = routeBanner(computeRoute(ctxOf(c), c.signals, {})); }
+
+document.addEventListener("change", (e) => {
+  const t = e.target; const c = CASE; if(!c) return;
+  if(t.dataset.areaVerdict){ const id = t.dataset.areaVerdict; c.answers[id] = Object.assign({}, c.answers[id], { verdict: t.value }); persist(c); const art = t.closest(".area"); if(art) art.className = "area " + t.value; }
+  else if(t.dataset.f){ c.form[t.dataset.f] = t.value; persist(c); if(["type","data","systems","impact","clinical"].includes(t.dataset.f)) refreshRoute(c); }
+  else if(t.dataset.fs){ const s = new Set(c.form.support||[]); if(t.checked) s.add(t.dataset.fs); else s.delete(t.dataset.fs); if(t.dataset.fs === "none" && t.checked) { s.clear(); s.add("none"); document.querySelectorAll('[data-fs]').forEach(x => { if(x.dataset.fs !== "none") x.checked = false; }); } else if(t.checked) { s.delete("none"); const n = document.querySelector('[data-fs="none"]'); if(n) n.checked = false; } c.form.support = SUPPORT.map(([k]) => k).filter(k => s.has(k)); persist(c); refreshRoute(c); }
+  else if(t.dataset.gap){ const set = new Set(c.upstream.selected); if(t.checked) set.add(t.dataset.gap); else set.delete(t.dataset.gap); c.upstream.selected = detectGaps(c.signals).map(g => g.id).filter(id => set.has(id)); c.upstream.text = null; persist(c); const top = window.scrollY; route(); window.scrollTo({ top }); }
+  else if(t.hasAttribute("data-upstream-sent")){ c.upstream.sent = t.checked; persist(c); }
+  else if(t.dataset.own){ c.ownership[t.dataset.own] = t.value; persist(c); }
+  else if(t.name === "decision"){ c.ownership.decision = t.value; persist(c); }
+});
+document.addEventListener("input", (e) => {
+  const t = e.target; const c = CASE; if(!c) return;
+  if(t.id === "upstreamText"){ c.upstream.text = t.value; persist(c); }
+  else if(t.dataset.areaNote){ c.answers[t.dataset.areaNote] = Object.assign({}, c.answers[t.dataset.areaNote], { note: t.value }); persist(c); }
+  else if(t.dataset.own){ c.ownership[t.dataset.own] = t.value; persist(c); }
+  else if(t.dataset.f){ c.form[t.dataset.f] = t.value; persist(c); if(t.dataset.f === "objective" || t.dataset.f === "candidate"){ const h1 = $("#caseTitle"); if(h1) h1.textContent = caseTitle(c); } }
+});
+
+async function runFetch(){
+  const c = CASE; if(!c || !c.form.repoUrl) return;
+  const ref = parseRepoUrl(c.form.repoUrl); if(!ref){ toast("The link needs an owner and a project, e.g. https://github.com/org/project"); return; }
+  const btn = $("#fetchBtn"); if(btn){ btn.disabled = true; btn.textContent = "Reading…"; }
+  toast("Reading the repository…");
+  const token = ref.kind === "github" ? (SETTINGS.ghToken||"") : "";
+  let S; try { S = await fetchRepositoryEvidence(ref, token); } catch(err){ S = { ok:false, errors:[err.message||String(err)] }; }
+  if(S.ok){
+    c.signals = S; c.evidence = deriveEvidence(S); c.example = false;
+    const d = draftAnswers(S); c.form.drafts = c.form.drafts || {};
+    ["licensing","maintenance","resources"].forEach(k => { const cur = (c.form[k]||"").trim(); if(!cur || cur === c.form.drafts[k]) c.form[k] = d[k]; c.form.drafts[k] = d[k]; });
+    if(!c.form.candidate || c.form.candidate === ref.repo) c.form.candidate = ref.repo;
+    if(c.form.type === "software" && S.files.hardware && S.files.hardware.length >= 2) c.form.type = "both";
+    persist(c); toast(`Read ${S.source}. Licensing, maintenance and resources are drafted; please check them.`);
+  } else { c.signals = Object.assign({ ok:false }, S); persist(c); }
+  if(location.hash === "#form" || location.hash === "#review") route();
+}
+
+// ---------- Exports ----------
+function slug(s){ return String(s||"assessment").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,60) || "assessment"; }
+async function download(name, text, type){
+  if(HOSTED){ try { const dl = await window.claude.use("downloads"); if(dl){ await dl.save({ filename: name, data: text }); return; } } catch(e){ if(e && e.code !== "not_granted") toast("Download was not completed."); return; } }
+  const blob = new Blob([text], { type: type + ";charset=utf-8" }); const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+function caseMarkdown(c){
+  const S = c.signals; const E = c.evidence || {}; const R = computeRoute(ctxOf(c), S, {}); const own = c.ownership || {};
+  const L = [];
+  L.push(`# ${caseTitle(c)}`, "", `FIN open source procurement toolkit — assessment record`, "", `- Candidate: ${tenAnswer(c, TEN[2])}`, `- Contact: ${c.form.contact || "—"}`, `- Date: ${fmtDate(c.updatedAt || c.createdAt)}`, "");
+  L.push(`## Route and decision`, "", `Route: **${R.route === "light" ? "Light review" : R.route === "extended" ? "Extended review" : "Clarify scope"}**`, "");
+  R.triggers.forEach(t => L.push(`- ${t.text}${t.refer ? " (refer: " + t.refer + ")" : ""}`)); if(!R.triggers.length) L.push("- No extended-review triggers.");
+  L.push("", `Decision: ${DECISION[own.decision||"open"]}`, `Decision owner: ${own.owner||"—"}`, `Operational owner: ${own.operator||"—"}`, `Conditions: ${own.conditions||"—"}`, `Review: ${own.reviewDate||"—"}${own.reviewTrigger ? " · " + own.reviewTrigger : ""}`, "");
+  L.push(`## Researcher's answers`, ""); TEN.forEach(t => { L.push(`**${String(t.n).padStart(2,"0")} ${t.q}**`, "", tenAnswer(c,t) + (t.auto && c.form.drafts && c.form.drafts[t.key] && c.form[t.key] === c.form.drafts[t.key] ? " _(drafted from repository signals, unedited)_" : ""), ""); });
+  if(S && S.ok){ L.push(`## Repository evidence snapshot`, "", `Fetched ${fmtDate(S.fetchedAt)} from ${S.source}.${S.scorecard ? ` OpenSSF Scorecard ${S.scorecard.score != null ? S.scorecard.score.toFixed(1) : "—"}/10 (${fmtDate(S.scorecard.date)}).` : ""}`, ""); evidenceSnapshotRows(S).forEach(([k,v]) => L.push(`- ${k}: ${v}`)); if(S.errors.length) L.push(`- Not retrieved: ${S.errors.join("; ")}`); L.push(""); }
+  L.push(`## Procurement review`, "", `| Area | Mark | Notes and signals |`, `|---|---|---|`);
+  activeAreas(c).forEach(a => { const ans = c.answers[a.id]||{}; const sp = areaSpecialist(a, c); const sum = areaSignalSummary(a, c); L.push(`| ${a.name}${sp ? " (→ " + sp + ")" : ""} | ${ans.verdict ? AREA_VLABEL[ans.verdict] : "open"} | ${[ans.note, sum ? `${sum.count} signals: ${sum.ok} positive${sum.mixed ? ", " + sum.mixed + " to check" : ""}${sum.bad ? ", " + sum.bad + " missing or negative" : ""}` : ""].filter(Boolean).join(" — ").replace(/\|/g,"\\|").replace(/\n/g," ")} |`); });
+  if(inactiveAreas(c).length) L.push("", `Not triggered: ${inactiveAreas(c).map(a => a.name).join(", ")}.`);
+  L.push("");
+  if(S && S.ok && c.upstream && c.upstream.selected && c.upstream.selected.length){ L.push(`## Feedback to the project${c.upstream.sent ? " (sent)" : " (drafted)"}`, ""); detectGaps(S).filter(g => c.upstream.selected.includes(g.id)).forEach(g => L.push(`- **${g.title}.** ${g.ask}`)); L.push(""); }
+  L.push(`---`, `Question set aligned across HEOSAT, CHAOSS, OpenSSF, OSOR, IDB, HECVAT, OpenChain, OSBA and open hardware sources. Crosswalk: ${CROSSWALK_URL}`);
+  return L.join("\n");
+}
+
+route();
+</script></body></html>
