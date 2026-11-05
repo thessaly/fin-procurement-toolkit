@@ -230,9 +230,9 @@ details.src{border-top:1px solid var(--line);padding:10px 0} details.src summary
 @media (prefers-reduced-motion:no-preference){ .btn,.q{transition:border-color .15s} }
 </style>
 </head>
-<body>
+<body><div class="banner info" style="margin:16px"><b>Team review · 5 November 2026</b> Reviewer-feedback edition. <a href="https://thessaly.github.io/fin-procurement-toolkit/">Current version</a></div>
 <header class="top"><div class="wrap">
-  <a class="brand" href="#home"><span class="mark">FIN</span><span>Open Source Procurement Toolkit</span><span class="ver">V7</span></a>
+  <a class="brand" href="#home"><span class="mark">FIN</span><span>Open Source Procurement Toolkit</span><span class="ver">Review</span></a>
   <nav class="main" aria-label="Sections">
     <a href="#home" data-nav="home">Assessment</a>
     <a href="#about" data-nav="about">About</a>
@@ -490,7 +490,7 @@ async function fetchGitHub(ref, token){
   const sorted = cl.slice().sort((a,b)=>(b.contributions||0)-(a.contributions||0));
   const lastPage = contributors && contributors.__headers ? lastPageFromLink(contributors.__headers.link) : null;
   const people = {
-    contributorsCount: cl.length, contributorsCapped: cl.length >= 100, contributorsPages: lastPage,
+    contributorsCount: Array.isArray(contributors) ? cl.length : null, contributorsCapped: cl.length >= 100, contributorsPages: lastPage,
     topShare: total ? (sorted[0].contributions||0)/total : null,
     top3Share: total ? sorted.slice(0,3).reduce((a,c)=>a+(c.contributions||0),0)/total : null,
     recentAuthors: Array.isArray(commits) ? new Set(commits.map(c => (c.author && c.author.login) || (c.commit && c.commit.author && c.commit.author.email) || "?")).size : null
@@ -509,12 +509,15 @@ async function fetchGitHub(ref, token){
     opened180d: opened180 && typeof opened180.total_count === "number" ? opened180.total_count : null,
     merged180d: merged180 && typeof merged180.total_count === "number" ? merged180.total_count : null
   };
+  const licenseFile = await getJSON(base + "/license", H, errors, "license file");
+  const sbomResult = await getJSON(base + "/dependency-graph/sbom", H, errors, "dependency graph");
   const lic = repo.license && repo.license.spdx_id && repo.license.spdx_id !== "NOASSERTION" ? repo.license.spdx_id : (repo.license ? "unrecognized" : null);
   const signals = {
     ok:true, source:"GitHub", host:"github.com", owner:ref.owner, repo:ref.repo, url: repo.html_url, fetchedAt: new Date().toISOString(),
     meta: { description: repo.description, homepage: repo.homepage, archived: !!repo.archived, disabled: !!repo.disabled, fork: !!repo.fork, createdAt: repo.created_at, pushedAt: repo.pushed_at, defaultBranch: repo.default_branch, stars: repo.stargazers_count, forks: repo.forks_count, watchers: repo.subscribers_count, topics: repo.topics||[], hasIssues: repo.has_issues, hasDiscussions: !!repo.has_discussions, hasWiki: repo.has_wiki, visibility: repo.visibility, language: repo.language },
-    license: { spdx: lic, name: repo.license ? repo.license.name : null, url: repo.license ? `${repo.html_url}/blob/${repo.default_branch}/LICENSE` : null, osi: lic ? OSI_SPDX.has(lic) : null, hardware: lic ? HW_SPDX.has(lic) : null },
+    license: { spdx: lic, name: repo.license ? repo.license.name : null, url: licenseFile && licenseFile.html_url || (Array.isArray(root) && root.find(e => /^(license|licence|copying)(\.|$)/i.test(e.name)) || {}).html_url || null, osi: lic ? OSI_SPDX.has(lic) : null, hardware: lic ? HW_SPDX.has(lic) : null },
     community: cp ? { health: cp.health_percentage, description: cp.description, documentation: cp.documentation } : null,
+    dependencies: normalizeDependencies(sbomResult, repo.html_url),
     files, people, activity, issues, scorecard: null, errors
   };
   signals.scorecard = await fetchScorecard("github.com", ref.owner, ref.repo, errors);
@@ -794,24 +797,24 @@ function computeRoute(c, S, answers){
 const SUPPORT = [["none","No purchase / assistance identifying options"],["maintenance","Maintenance or support"],["hosting","External hosting / service"],["development","Development / modification"],["equipment","Physical equipment / fabrication"],["funding","Upstream funding"],["training","Training / implementation"]];
 const DATA_OPTS = [["public","Public / non-sensitive"],["internal","Internal / confidential"],["personal","Personal or sensitive"],["regulated","Regulated (health, student records, export-controlled)"]];
 const SYSTEMS_OPTS = [["local","Local team use"],["shared","Shared or departmental service"],["institutional","Institution-wide or externally hosted"]];
-const IMPACT_OPTS = [["low","Low"],["moderate","Moderate"],["high","High"]];
+const IMPACT_OPTS = [["low","Low: work can continue with an easy workaround"],["moderate","Moderate: delays or repeat work"],["high","High: essential service, major loss or safety consequences"]];
 const CLINICAL_OPTS = [["unknown","Unknown"],["no","No"],["yes","Yes"]];
 const TYPE_OPTS = [["software","Software"],["hardware","Hardware"],["both","Software and hardware"],["service","Service"]];
 
 const TEN = [
   { n:1, key:"objective",  q:"What is the research objective?", label:"Research goal", hint:"Describe the intended outcome and how it will be evaluated. A shortened version of this response is used as the assessment title.", xw:["Q01"] },
-  { n:2, key:"rationale",  q:"Why is an open-source approach appropriate?", label:"Rationale and alternatives considered", hint:"Relevant considerations may include reproducibility, adaptation, repair, cost or continuity. Briefly note any existing tools or alternatives considered.", xw:["Q01","Q38","Q39"] },
+  { n:2, key:"rationale",  q:"How will you use it, and why choose open source?", label:"Intended use, research fit and alternatives", hint:"Describe who will use it, what it must work with, and why open source fits. Include alternatives and any existing open-source tools. For hardware, mention fabrication or calibration.", xw:["Q01","Q38","Q39"] },
   { n:3, key:"candidate",  q:"What software or hardware are you considering?", xw:["Q02","Q37"] },
   { n:4, key:"use",        q:"What is the intended use?", label:"Use and operating context", hint:"Who will use it? What must it work with? For hardware, describe fabrication, calibration, repair or physical use. Mention existing open-source tools where relevant.", xw:["Q34","Q35","Q36","Q37","Q57"] },
-  { n:5, key:"support",    q:"What institutional support or expenditure is required?", hint:"Select all that apply. These selections determine the relevant review areas.", xw:["Q02","Q26","Q41","Q48","Q53","Q54","Q55","Q61"] },
+  { n:5, key:"support",    q:"What help do you need from your institution?", hint:"Select the practical help you need. For example: pay a provider to maintain the tool; host it on institutional servers; pay for modifications; or purchase fabrication. Choose no purchase if you only need advice.", xw:["Q02","Q26","Q41","Q48","Q53","Q54","Q55","Q61"] },
   { n:6, key:"exposure",   q:"What are the potential consequences of failure or misuse?", xw:["Q31","Q33","Q52","Q58"] },
-  { n:7, key:"licensing",  q:"Are the licensing and usage rights suitable?", label:"License, design rights and known obligations", hint:"Identify the license and permission to use, modify, distribute or fabricate. Include dependency obligations. Unknown is acceptable and creates a follow-up.", xw:["Q03","Q04","Q05","Q06","Q07","Q53"], auto:true },
-  { n:8, key:"maintenance",q:"What maintenance and continuity arrangements are available?", label:"Available support and continuity", hint:"Name actual maintainer / supplier availability and your team's capacity. Explain what happens if support or funding stops.", xw:["Q08","Q10","Q14","Q16","Q23","Q24","Q25","Q26","Q27","Q43","Q44","Q45","Q46","Q47"], auto:true },
-  { n:9, key:"resources",  q:"What resources and validation procedures are required?", label:"Resources, cost and acceptance", hint:"Estimate staff effort and lifecycle cost. Include practical testing, documentation, accessibility and hardware acceptance where relevant. Unknown is acceptable.", xw:["Q18","Q19","Q20","Q21","Q22","Q28","Q29","Q30","Q32","Q48","Q49","Q50","Q51","Q57"], auto:true },
+  { n:7, key:"licensing",  q:"What does the license say?", label:"License, design rights and known obligations", hint:"Identify the license and permission to use, modify, distribute or fabricate. Include dependency obligations. Unknown is acceptable and creates a follow-up.", xw:["Q03","Q04","Q05","Q06","Q07","Q53"], auto:true },
+  { n:8, key:"maintenance",q:"What does the repository show about maintenance?", label:"Available support and continuity", hint:"Name actual maintainer / supplier availability and your team's capacity. Explain what happens if support or funding stops.", xw:["Q08","Q10","Q14","Q16","Q23","Q24","Q25","Q26","Q27","Q43","Q44","Q45","Q46","Q47"], auto:true },
+  { n:9, key:"resources",  q:"Has your team tested this for the intended use?", label:"Resources, cost and acceptance", hint:"Estimate staff effort and lifecycle cost. Include practical testing, documentation, accessibility and hardware acceptance where relevant. Unknown is acceptable.", xw:["Q18","Q19","Q20","Q21","Q22","Q28","Q29","Q30","Q32","Q48","Q49","Q50","Q51","Q57"], auto:true },
   { n:10,key:"contact",    q:"Who is responsible for coordinating this request?", label:"Research team contact and responsible unit", hint:"Identify the responsible person or role and their unit. This information is recorded in the downloaded record only; no notification is sent.", xw:["Q49","Q59","Q60","Q62"] }
 ];
 
-function emptyForm(){ return { objective:"", rationale:"", candidate:"", type:"software", version:"", repoUrl:"", use:"", support:[], data:"public", systems:"local", impact:"moderate", clinical:"unknown", licensing:"", maintenance:"", resources:"", contact:"", drafts:{} }; }
+function emptyForm(){ return { objective:"", rationale:"", candidate:"", type:"software", version:"", repoUrl:"", use:"", support:[], data:"public", systems:"local", impact:"moderate", clinical:"unknown", licensing:"", maintenance:"", resources:"", contact:"", localTested:"", testNotes:"", drafts:{} }; }
 
 // Derive the flags the route logic uses from the form
 function formToContext(f){
@@ -833,6 +836,8 @@ function draftAnswers(S){
   if(!S || !S.ok) return {};
   const L = S.license, A = S.activity, P = S.people, F = S.files, I = S.issues, sc = S.scorecard; const d = daysSince(S.meta.pushedAt);
   const lic = [];
+  lic.push(`License classification: ${licenseClass(L.spdx)}.`);
+  if(L.url) lic.push(`License text: ${L.url}`);
   if(L.spdx && L.spdx !== "unrecognized") lic.push(`License detected: ${L.spdx}${L.name && L.name !== L.spdx ? ` (${L.name})` : ""}${L.osi ? ", OSI-approved" : L.hardware ? ", an open hardware/content license" : ", not on the OSI list used here"}.`);
   else if(L.spdx === "unrecognized") lic.push("A license file exists but the host could not identify it; it needs reading.");
   else lic.push("Unknown: no license detected in the repository; license and intended-use obligations need review.");
@@ -843,7 +848,7 @@ function draftAnswers(S){
 
   const m = [];
   m.push(S.meta.archived ? "The upstream repository is archived (read-only)." : d == null ? "" : `Last activity ${d} days ago${A.commits90d != null ? `, ${A.commits90d}${A.commits90dCapped?"+":""} commits in the last 90 days` : ""}.`);
-  if(A.latestRelease) m.push(`Latest release ${A.latestRelease.tag || A.latestRelease.name} on ${fmtDate(A.latestRelease.date)}; ${A.releasesLastYear} release${A.releasesLastYear===1?"":"s"} in the last 12 months.`); else if(A.latestTag) m.push(`No releases published; latest tag ${A.latestTag}.`); else m.push("No releases found.");
+  if(A.latestRelease) m.push(`Latest release ${A.latestRelease.tag || A.latestRelease.name} on ${fmtDate(A.latestRelease.date)}; ${A.releasesLastYear} release${A.releasesLastYear===1?"":"s"} in the last 12 months.`); else if(A.latestTag) m.push(`No releases published; latest tag ${A.latestTag}.`); else m.push("No release evidence retrieved; this does not establish that releases are absent.");
   if(P.contributorsCount != null) m.push(`${P.contributorsCount}${P.contributorsCapped?"+":""} contributors; the top contributor accounts for ${pct(P.topShare)} of counted contributions${P.recentAuthors != null ? `; ${P.recentAuthors} distinct authors in the last 90 days` : ""}.`);
   if(I.closed180d != null) m.push(`${I.opened180d ?? "—"} issues opened and ${I.closed180d} closed in the last 180 days${I.merged180d != null ? `; ${I.merged180d} pull requests merged` : ""}.`);
   if(F.governance || F.maintainers) m.push(`Governance or maintainer documentation present (${[F.governance, F.maintainers].filter(Boolean).join(", ")}).`); else m.push("No governance or maintainers file found; decision authority needs asking.");
@@ -853,8 +858,8 @@ function draftAnswers(S){
   const r = [];
   const docs = [F.readme && "README", F.contributing && "CONTRIBUTING", F.docsDir && F.docsDir + "/", F.changelog && "changelog"].filter(Boolean);
   r.push(docs.length ? `Documentation present: ${docs.join(", ")}.` : "No standard documentation files found.");
-  r.push(F.workflows && F.workflows.length ? `Continuous integration configured (${F.workflows.length} workflow${F.workflows.length===1?"":"s"})${F.testsDir ? " and a tests folder is present" : ""}.` : F.testsDir ? "A tests folder is present but no CI configuration was found." : "No tests or CI configuration found.");
-  r.push(F.security ? "A security policy (vulnerability disclosure route) is published." : "No security policy found; there is no documented route to report vulnerabilities.");
+  r.push(F.workflows && F.workflows.length ? `Continuous integration configured (${F.workflows.length} workflow${F.workflows.length===1?"":"s"})${F.testsDir ? " and a tests folder is present" : ""}.` : F.testsDir ? "A tests folder is present but no CI configuration was found." : "No tests or CI configuration detected in the inspected paths; this does not establish that the project is untested.");
+  r.push(F.security ? "A security policy (vulnerability disclosure route) is published." : "No security policy detected in the inspected paths; other reporting routes may exist.");
   if(sc){ const low = Object.entries(sc.checks).filter(([k,v]) => v.score != null && v.score >= 0 && v.score < 4).map(([k]) => k); r.push(`OpenSSF Scorecard ${sc.score != null ? sc.score.toFixed(1) : "—"}/10${low.length ? ` (low: ${low.join(", ")})` : ""}.`); }
   if(F.dependabot || F.renovate) r.push("Automated dependency updates are configured.");
   r.push("Still to estimate: staff effort, lifecycle cost including exit, and acceptance tests" + (F.hardware && F.hardware.length ? " including fabrication, calibration and safety checks" : "") + ".");
@@ -1058,7 +1063,7 @@ function exampleBanner(c, role){
 // ---------- The form ----------
 function viewForm(c){
   const f = c.form, S = c.signals, E = c.evidence || {}; const x = ctxOf(c); const R = computeRoute(x, S, {});
-  const card = (t, body) => `<section class="card qcard" id="q${t.n}"><p class="eyebrow">${String(t.n).padStart(2,"0")}</p><h3>${h(t.q)}</h3>${body}</section>`;
+  const card = (t, body) => `<section class="card qcard" id="q${t.n}"><p class="eyebrow">${String(t.n > 4 ? t.n-1 : t.n).padStart(2,"0")}</p><h3>${h(t.q)}</h3>${body}</section>`;
   const ta = (t, extra) => `<label class="field">${h(t.label)}${extra||""}<textarea data-f="${t.key}" rows="3">${h(f[t.key]||"")}</textarea><span class="hint">${h(t.hint)}</span></label>`;
   const evFor = (t) => { const ids = t.xw.filter(id => E[id] && E[id].items && E[id].items.length); if(!ids.length) return ""; const items = []; const seen = new Set(); ids.forEach(id => E[id].items.forEach(it => { const k = it.label + it.value; if(it.src !== "toolkit" && !seen.has(k)){ seen.add(k); items.push(it); } })); return `<details class="evd" ${c.ui.ev[t.key] ? "open" : ""} data-evkey="${t.key}"><summary>What the repository shows <span class="muted">(${items.length} signals)</span></summary><div class="ev">${items.map(it => `<div class="evi"><span class="dot ${it.ok===true?"ok":it.ok===false?"bad":it.ok==="mixed"?"mixed":""}"></span><span class="evl">${h(it.label)}</span><span class="evv">${it.link ? `<a href="${h(it.link)}" target="_blank" rel="noopener">${h(it.value)}</a>` : h(it.value)}</span><span class="evs">${h(it.src)}</span></div>`).join("")}</div></details>`; };
   const draftNote = (t) => f.drafts && f.drafts[t.key] ? (f[t.key] === f.drafts[t.key] ? `<span class="draft">Drafted from the repository on ${h(fmtDate(S && S.fetchedAt))}. Edit freely.</span>` : `<span class="draft">Edited. <a href="#form" data-act="redraft" data-key="${t.key}">Restore the repository draft</a></span>`) : "";
@@ -1074,25 +1079,24 @@ function viewForm(c){
     ${f.repoUrl && HOSTED ? `<div class="banner info">This hosted copy cannot reach repository APIs, so nothing is drafted here. Open the toolkit from your own site to have licensing, maintenance and resources pre-filled.</div>` : ""}
 
     ${card(TEN[0], ta(TEN[0]))}
-    ${card(TEN[1], ta(TEN[1]))}
+    ${card(TEN[1], ta(TEN[1]) + (f.use ? `<p class="small">Earlier operating-context answer: ${h(f.use)}</p>` : ""))}
     ${card(TEN[2], `<div class="grid2">
         <label class="field">Project / device / service<input type="text" data-f="candidate" value="${h(f.candidate)}" placeholder="Enter “Unknown” if not yet identified"><span class="hint">${S && S.ok && S.meta.description ? h(S.meta.description) : "Enter “Unknown” if a project or supplier has not yet been identified."}</span></label>
         <label class="field">Type<select data-f="type">${TYPE_OPTS.map(([k,v]) => `<option value="${k}" ${f.type===k?"selected":""}>${v}</option>`).join("")}</select></label>
         <label class="field">Version / design revision, if known<input type="text" data-f="version" value="${h(f.version)}"></label>
         <label class="field urlfield">Project / design URL, if available<div class="row"><input type="url" data-f="repoUrl" id="repoUrlField" value="${h(f.repoUrl)}" placeholder="https://github.com/org/project">${HOSTED ? "" : `<button type="button" class="btn small" data-act="fetch" id="fetchBtn">${S && S.ok ? "Re-read" : "Read repository"}</button>`}</div><span class="hint">A GitHub, GitLab or Codeberg link lets the toolkit draft the licensing, maintenance and resources answers.</span></label>
       </div>`)}
-    ${card(TEN[3], ta(TEN[3]))}
     ${card(TEN[4], `<p class="small muted">${h(TEN[4].hint)}</p><div class="checks">${SUPPORT.map(([k,v]) => `<label class="check"><input type="checkbox" data-fs="${k}" ${(f.support||[]).includes(k)?"checked":""}><span>${v}</span></label>`).join("")}</div>`)}
-    ${card(TEN[5], `<div class="grid2">
+    ${card(TEN[5], `<p class="hint">Describe the situation; you do not need to judge legal risk. Personal data → privacy review; external hosting → IT/security review; possible injury or clinical use → safety review. License and contract questions go to legal/procurement.</p><div class="grid2">
         <label class="field">Data<select data-f="data">${DATA_OPTS.map(([k,v]) => `<option value="${k}" ${f.data===k?"selected":""}>${v}</option>`).join("")}</select></label>
         <label class="field">Systems<select data-f="systems">${SYSTEMS_OPTS.map(([k,v]) => `<option value="${k}" ${f.systems===k?"selected":""}>${v}</option>`).join("")}</select></label>
         <label class="field">Impact of failure<select data-f="impact">${IMPACT_OPTS.map(([k,v]) => `<option value="${k}" ${f.impact===k?"selected":""}>${v}</option>`).join("")}</select></label>
         <label class="field">Clinical / safety-critical<select data-f="clinical">${CLINICAL_OPTS.map(([k,v]) => `<option value="${k}" ${f.clinical===k?"selected":""}>${v}</option>`).join("")}</select></label>
       </div>
       <div id="routeBox">${routeBanner(R)}</div>`)}
-    ${card(TEN[6], ta(TEN[6], draftNote(TEN[6])) + evFor(TEN[6]))}
-    ${card(TEN[7], ta(TEN[7], draftNote(TEN[7])) + evFor(TEN[7]))}
-    ${card(TEN[8], ta(TEN[8], draftNote(TEN[8])) + evFor(TEN[8]))}
+    ${card(TEN[6], licensePanel(S) + autoPanel(c,"licensing") + evFor(TEN[6]) + dependencyPanel(S))}
+    ${card(TEN[7], autoPanel(c,"maintenance") + `<p class="hint">Activity does not establish that maintainers can take on work. The reviewer confirms provider availability, local ownership and continuity arrangements.</p>` + evFor(TEN[7]))}
+    ${card(TEN[8], `<p class="hint">This is about testing by your team for this use. Upstream automated tests do not answer it.</p><div class="checks">${["yes","no"].map(v => `<label class="check"><input type="radio" name="localTested" data-f="localTested" value="${v}" ${f.localTested===v?"checked":""}>${v==="yes"?"Yes":"No"}</label>`).join("")}</div><label class="field">Optional test notes<textarea data-f="testNotes">${h(f.testNotes||"")}</textarea></label>` + autoPanel(c,"resources") + evFor(TEN[8]))}
     ${card(TEN[9], `<label class="field">${h(TEN[9].label)}<input type="text" data-f="contact" value="${h(f.contact)}" placeholder="Name or role, unit"><span class="hint">${h(TEN[9].hint)}</span></label>`)}
     <div class="row" style="justify-content:space-between"><p class="small muted">Nothing is stored. The record is yours to download.</p><div class="row"><a class="btn primary" href="#report">Review the record</a><button class="btn" data-act="export-md">Download Markdown</button></div></div>
   </div>`;
@@ -1130,6 +1134,8 @@ function viewReview(c){
       <div class="row"><a class="btn small" href="#form">Request form</a><a class="btn small primary" href="#report">Record</a></div>
     </header>
     ${exampleBanner(c, "reviewer")}
+    ${licensePanel(c.signals)}
+    ${dependencyPanel(c.signals)}
     <p class="small muted num">${marked}/${act.length} areas marked</p>
     <div class="areas">${act.map(a => renderArea(c, a)).join("")}</div>
     ${inact.length ? `<details class="small muted"><summary>Not triggered by this request: ${inact.map(a => h(a.name)).join(", ")}</summary><p style="padding-top:6px">These areas switch on when the answers change (for example data that is not public, a paid provider, shared systems, or physical hardware).</p></details>` : ""}
@@ -1162,7 +1168,7 @@ function renderUpstream(c){
     <p class="small muted">The issue link opens the project's tracker with the title and text filled in; nothing is posted until you submit it there.</p>` : ""}
   </section>`;
 }
-function researcherText(c, n){ const t = TEN[n-1]; return tenAnswer(c, t); }
+function researcherText(c, n){ const t = TEN[n===4?1:n-1]; return tenAnswer(c, t); }
 function renderArea(c, a){
   const ans = c.answers[a.id] || {}; const v = ans.verdict || ""; const sp = areaSpecialist(a, c); const sum = areaSignalSummary(a, c); const items = areaEvidence(a, c); const open = c.ui.open[a.id];
   return `<article class="area ${v}" data-area="${a.id}">
@@ -1197,6 +1203,8 @@ function evidenceSnapshotRows(S){
 }
 function tenAnswer(c, t){
   const f = c.form;
+  if(t.key === "rationale") return [f.rationale, f.use].filter(Boolean).join("\n\n") || "—";
+  if(t.key === "resources") return `Local testing: ${f.localTested || "Not answered"}. ${f.testNotes || ""}\nRepository evidence: ${f.resources || "Not retrieved"}`;
   if(t.key === "candidate") return `${f.candidate || "—"} · ${label(TYPE_OPTS, f.type)}${f.version ? " · " + f.version : ""}${f.repoUrl ? " · " + f.repoUrl : ""}`;
   if(t.key === "support") return (f.support||[]).map(k => label(SUPPORT,k)).join("; ") || "—";
   if(t.key === "exposure") return `Data: ${label(DATA_OPTS,f.data)} · Systems: ${label(SYSTEMS_OPTS,f.systems)} · Impact of failure: ${label(IMPACT_OPTS,f.impact)} · Clinical / safety-critical: ${label(CLINICAL_OPTS,f.clinical)}`;
@@ -1224,7 +1232,7 @@ function viewReport(c){
     </section>
     <section class="stack">
       <h2>Researcher's answers</h2>
-      <dl class="ten">${TEN.map(t => `<dt><span class="mono">${String(t.n).padStart(2,"0")}</span> ${h(t.q)}</dt><dd>${h(tenAnswer(c,t))}${t.auto && c.form.drafts && c.form.drafts[t.key] && c.form[t.key] === c.form.drafts[t.key] ? ` <span class="small muted">(drafted from repository signals, unedited)</span>` : ""}</dd>`).join("")}</dl>
+      <dl class="ten">${TEN.filter(t => t.n !== 4).map(t => `<dt><span class="mono">${String(t.n > 4 ? t.n-1 : t.n).padStart(2,"0")}</span> ${h(t.q)}</dt><dd>${h(tenAnswer(c,t))}${t.auto && c.form.drafts && c.form.drafts[t.key] && c.form[t.key] === c.form.drafts[t.key] ? ` <span class="small muted">(drafted from repository signals, unedited)</span>` : ""}</dd>`).join("")}</dl>
     </section>
     ${S && S.ok ? `<section class="stack">
       <h2>Repository evidence snapshot</h2>
@@ -1342,6 +1350,7 @@ async function runFetch(){
   const token = ref.kind === "github" ? (SETTINGS.ghToken||"") : "";
   let S; try { S = await fetchRepositoryEvidence(ref, token); } catch(err){ S = { ok:false, errors:[err.message||String(err)] }; }
   if(S.ok){
+    if(S.dependencies && c.signals && c.signals.url===S.url && c.signals.dependencies){S.dependencies.review=c.signals.dependencies.review||{};S.dependencies.context=c.signals.dependencies.context||"";}
     c.signals = S; c.evidence = deriveEvidence(S); c.example = false;
     const d = draftAnswers(S); c.form.drafts = c.form.drafts || {};
     ["licensing","maintenance","resources"].forEach(k => { const cur = (c.form[k]||"").trim(); if(!cur || cur === c.form.drafts[k]) c.form[k] = d[k]; c.form.drafts[k] = d[k]; });
@@ -1365,8 +1374,8 @@ function caseMarkdown(c){
   L.push(`## Route and decision`, "", `Route: **${R.route === "light" ? "Light review" : R.route === "extended" ? "Extended review" : "Clarify scope"}**`, "");
   R.triggers.forEach(t => L.push(`- ${t.text}${t.refer ? " (refer: " + t.refer + ")" : ""}`)); if(!R.triggers.length) L.push("- No extended-review triggers.");
   L.push("", `Decision: ${DECISION[own.decision||"open"]}`, `Decision owner: ${own.owner||"—"}`, `Operational owner: ${own.operator||"—"}`, `Conditions: ${own.conditions||"—"}`, `Review: ${own.reviewDate||"—"}${own.reviewTrigger ? " · " + own.reviewTrigger : ""}`, "");
-  L.push(`## Researcher's answers`, ""); TEN.forEach(t => { L.push(`**${String(t.n).padStart(2,"0")} ${t.q}**`, "", tenAnswer(c,t) + (t.auto && c.form.drafts && c.form.drafts[t.key] && c.form[t.key] === c.form.drafts[t.key] ? " _(drafted from repository signals, unedited)_" : ""), ""); });
-  if(S && S.ok){ L.push(`## Repository evidence snapshot`, "", `Fetched ${fmtDate(S.fetchedAt)} from ${S.source}.${S.scorecard ? ` OpenSSF Scorecard ${S.scorecard.score != null ? S.scorecard.score.toFixed(1) : "—"}/10 (${fmtDate(S.scorecard.date)}).` : ""}`, ""); evidenceSnapshotRows(S).forEach(([k,v]) => L.push(`- ${k}: ${v}`)); if(S.errors.length) L.push(`- Not retrieved: ${S.errors.join("; ")}`); L.push(""); }
+  L.push(`## Researcher's answers`, ""); TEN.filter(t => t.n !== 4).forEach(t => { L.push(`**${String(t.n > 4 ? t.n-1 : t.n).padStart(2,"0")} ${t.q}**`, "", tenAnswer(c,t) + (t.auto && c.form.drafts && c.form.drafts[t.key] && c.form[t.key] === c.form.drafts[t.key] ? " _(drafted from repository signals, unedited)_" : ""), ""); });
+  if(S && S.ok){ L.push(`## Dependency evidence`, "", dependencyText(S), ""); L.push(`## Repository evidence snapshot`, "", `Fetched ${fmtDate(S.fetchedAt)} from ${S.source}.${S.scorecard ? ` OpenSSF Scorecard ${S.scorecard.score != null ? S.scorecard.score.toFixed(1) : "—"}/10 (${fmtDate(S.scorecard.date)}).` : ""}`, ""); evidenceSnapshotRows(S).forEach(([k,v]) => L.push(`- ${k}: ${v}`)); if(S.errors.length) L.push(`- Not retrieved: ${S.errors.join("; ")}`); L.push(""); }
   L.push(`## Procurement review`, "", `| Area | Mark | Notes and signals |`, `|---|---|---|`);
   activeAreas(c).forEach(a => { const ans = c.answers[a.id]||{}; const sp = areaSpecialist(a, c); const sum = areaSignalSummary(a, c); L.push(`| ${a.name}${sp ? " (→ " + sp + ")" : ""} | ${ans.verdict ? AREA_VLABEL[ans.verdict] : "open"} | ${[ans.note, sum ? `${sum.count} signals: ${sum.ok} positive${sum.mixed ? ", " + sum.mixed + " to check" : ""}${sum.bad ? ", " + sum.bad + " missing or negative" : ""}` : ""].filter(Boolean).join(" — ").replace(/\|/g,"\\|").replace(/\n/g," ")} |`); });
   if(inactiveAreas(c).length) L.push("", `Not triggered: ${inactiveAreas(c).map(a => a.name).join(", ")}.`);
@@ -1376,5 +1385,69 @@ function caseMarkdown(c){
   return L.join("\n");
 }
 
+// Evidence helpers: facts are separate from institutional decisions.
+function licenseClass(id){
+  if(!id || id === "NOASSERTION" || id === "unrecognized") return "Unidentified: custom, modified or undetected terms; reviewer must inspect";
+  if(/\s(?:AND|OR|WITH)\s|[()]/.test(id)) return "Multiple licenses / exception: reviewer must inspect the expression";
+  if(/^LicenseRef-/.test(id)) return "Custom / non-standard identifier: read the supplied terms";
+  if(/^(AGPL)-/.test(id)) return "Network copyleft";
+  if(/^(GPL|EUPL|CECILL)-/.test(id) || id === "CERN-OHL-S-2.0") return "Strong copyleft / reciprocal";
+  if(/^(LGPL|MPL|EPL|CDDL|MS-RL)-/.test(id) || id === "CERN-OHL-W-2.0") return "Limited copyleft / reciprocal";
+  if(["MIT","Apache-2.0","BSD-2-Clause","BSD-3-Clause","ISC","0BSD","Zlib","BSL-1.0","Unlicense","CC0-1.0","UPL-1.0","NCSA","PostgreSQL","CERN-OHL-P-2.0"].includes(id)) return "Permissive / no copyleft";
+  return "Not classified by this tool; not necessarily custom";
+}
+function autoPanel(c,key){
+  const txt = c.signals && c.signals.ok ? draftAnswers(c.signals)[key] : "Repository evidence unavailable. Add a repository URL and select Read repository. The reviewer follows up on missing evidence.";
+  return `<div class="banner info"><b>Automatically collected evidence</b><p>${h(txt)}</p></div>`;
+}
+function licensePanel(S){
+  const L = S && S.ok && S.license || {};
+  return `<p><b>${h(L.spdx || "License not identified")}</b> · ${h(licenseClass(L.spdx))}${L.url ? ` · <a href="${h(L.url)}" target="_blank" rel="noopener">Read license text</a>` : ""}</p><details><summary>Plain-language guide for the reviewer</summary><p>Permissions: what may be used, changed or shared. Conditions: notices, source disclosure or reciprocal licensing that may apply. Limitations: warranty, liability, patent and trademark provisions to inspect.</p><p>Copyleft is a type of obligation, not an automatic reason to reject a project. A machine-unrecognized license is not proof of custom terms. Review the actual text and intended use, including dependency licenses and any separate service contract.</p><a href="https://choosealicense.com/appendix/" target="_blank" rel="noopener">License permissions, conditions and limitations reference</a></details>`;
+}
+function normalizeDependencies(result,url){
+  const b = result && result.sbom;
+  if(!b || !Array.isArray(b.packages)) return {status:"unavailable", source:url+"/network/dependencies", packages:[], edges:[]};
+  return {status:"retrieved",source:url+"/network/dependencies",created:b.creationInfo && b.creationInfo.created,
+    packages:b.packages.map(p=>({id:p.SPDXID,name:p.name,version:p.versionInfo||"",license:p.licenseConcluded && p.licenseConcluded!=="NOASSERTION" ? p.licenseConcluded : p.licenseDeclared||"NOASSERTION"})),
+    edges:(b.relationships||[]).filter(r=>["DEPENDS_ON","DEPENDENCY_OF"].includes(r.relationshipType)).map(r=>r.relationshipType==="DEPENDS_ON"?{from:r.spdxElementId,to:r.relatedSpdxElement}:{from:r.relatedSpdxElement,to:r.spdxElementId})};
+}
+function dependencyText(S){
+  const d=S.dependencies;
+  if(!d || d.status!=="retrieved") return "Dependency graph unavailable; no conclusion about dependency absence or license compatibility.";
+  return `GitHub SBOM: ${d.packages.length} packages, ${d.edges.length} reported relationships. Snapshot: ${d.created||"not supplied"}. Source: ${d.source}\n`+d.packages.map(p=>`${p.name} ${p.version}: used by ${dependentCount(d,p.id)} components; critical: ${d.review?.[p.id]?.critical||"Not assessed"}; role/impact: ${d.review?.[p.id]?.note||"Not recorded"}; license: ${p.license} (${licenseClass(p.license)})`).join("\n")+`\nOther critical software/services: ${d.context||"Not recorded"}`;
+}
+function dependencyPanel(S){
+  const d=S && S.dependencies;
+  if(!d || d.status!=="retrieved") return `<section class="card"><h3>Dependency graph</h3><p>Dependency data ${S && S.example ? "is not part of this illustrative snapshot. Read the repository live" : "could not be retrieved"}. This does not mean there are no dependencies.</p>${d ? `<a href="${h(d.source)}" target="_blank" rel="noopener">Inspect GitHub dependency evidence</a>` : ""}<p class="hint">GitHub only. Access permissions, rate limits or disabled dependency analysis can prevent retrieval.</p></section>`;
+  const nodes=d.packages, lookup=new Map(nodes.map(p=>[p.id,p]));
+  const choices=nodes.filter(p=>d.edges.some(e=>e.from===p.id));
+  const root=choices.find(p=>p.id==="SPDXRef-Repository") || choices[0];
+  return `<section class="card"><h3>Dependency graph</h3><p class="hint">GitHub SBOM · ${h(d.created||"date not supplied")} · ${nodes.length} packages · ${d.edges.length} reported edges. Select a component to see which software it relies on. Dependent counts show structural importance; your team identifies what is critical to the intended use. Coverage depends on GitHub analysis and may omit services, plugins or system software.</p><label class="field">Component<select id="depRoot">${choices.map(p=>`<option value="${h(p.id)}" ${p===root?"selected":""}>${h(p.name)}</option>`).join("")}</select></label><div id="depGraph">${graphFor(d,root && root.id)}</div><details open><summary>Software components, criticality and licenses</summary><div style="overflow:auto"><table><thead><tr><th>Component</th><th>Version</th><th>Used by</th><th>Critical for this use?</th><th>Role / failure impact</th><th>License</th><th>Classification</th></tr></thead><tbody>${nodes.map(p=>`<tr><td>${h(p.name)}</td><td>${h(p.version)}</td><td>${dependentCount(d,p.id)} components</td><td><select aria-label="Criticality of ${h(p.name)}" data-dep-critical="${h(p.id)}">${[["","Not assessed"],["yes","Yes"],["no","No"]].map(([v,l])=>`<option value="${v}" ${(d.review?.[p.id]?.critical||"")===v?"selected":""}>${l}</option>`).join("")}</select></td><td><input aria-label="Role and failure impact of ${h(p.name)}" data-dep-note="${h(p.id)}" value="${h(d.review?.[p.id]?.note||"")}" placeholder="e.g. database; analysis stops without it"></td><td>${/^[A-Za-z0-9.-]+$/.test(p.license)&&p.license!=="NOASSERTION"&&!p.license.startsWith("LicenseRef-")?`<a href="https://spdx.org/licenses/${encodeURIComponent(p.license)}.html" target="_blank" rel="noopener">${h(p.license)}</a>`:h(p.license)}</td><td>${h(licenseClass(p.license))}</td></tr>`).join("")}</tbody></table></div></details><label class="field">Other critical software or services missing from this graph<textarea data-dep-context placeholder="Name, role, version if known, and what happens if unavailable">${h(d.context||"")}</textarea><span class="hint">For example: database server, operating system, external API, hardware driver or manually installed plugin. These notes do not create inferred SBOM edges.</span></label><a href="${h(d.source)}" target="_blank" rel="noopener">Source on GitHub</a></section>`;
+}
+function dependentCount(d,id){
+  const found=new Set(), queue=[id];
+  while(queue.length){const current=queue.shift();for(const edge of d.edges){if(edge.to===current && edge.from!==id && !found.has(edge.from)){found.add(edge.from);queue.push(edge.from);}}}
+  return found.size;
+}
+function saveDependencyInput(e){
+  const t=e.target, d=CASE && CASE.signals && CASE.signals.dependencies;if(!d)return;
+  const id=t.dataset.depCritical || t.dataset.depNote;
+  if(id){d.review=d.review||{};d.review[id]=d.review[id]||{};if(t.dataset.depCritical!==undefined)d.review[id].critical=t.value;else d.review[id].note=t.value;}
+  else if(t.hasAttribute("data-dep-context"))d.context=t.value;else return;
+  persist(CASE);
+  if(t.dataset.depCritical!==undefined){const select=document.getElementById("depRoot"),graph=document.getElementById("depGraph");if(select&&graph)graph.innerHTML=graphFor(d,select.value);}
+}
+document.addEventListener("input",saveDependencyInput);
+document.addEventListener("change",saveDependencyInput);
+function graphFor(d,id){
+  const source=d.packages.find(p=>p.id===id);
+  if(!source) return "<p>No dependency relationships reported. Inspect the component list; absence of edges is not proof of no dependencies.</p>";
+  const targets=d.edges.filter(e=>e.from===id).map(e=>d.packages.find(p=>p.id===e.to)).filter(Boolean);
+  const shown=targets.slice(0,24), height=Math.max(100,shown.length*62);
+  return `<p>${h(source.name)} depends on ${targets.length} reported components${targets.length>24?" (first 24 shown; all components are in the table)":""}.</p><div style="overflow:auto"><svg viewBox="0 0 800 ${height}" style="width:100%;min-width:560px" role="img" aria-label="Dependencies of ${h(source.name)}"><rect x="5" y="${height/2-24}" width="265" height="48" rx="8" fill="#e6eeee"/><text x="15" y="${height/2+4}" font-size="13">${h(source.name.slice(0,33))}</text>${shown.map((p,i)=>`<path d="M270 ${height/2} L330 ${i*62+28} L355 ${i*62+28}" fill="none" stroke="#63827c"/><rect x="355" y="${i*62+5}" width="435" height="48" rx="8" fill="#f2f5f4"/><text x="365" y="${i*62+24}" font-size="13">${h(p.name.slice(0,52))}</text><text x="365" y="${i*62+42}" font-size="11">${h(((p.version||"Version unspecified")+" · "+(d.review?.[p.id]?.critical==="yes"?"CRITICAL FOR THIS USE":"Criticality not confirmed")).slice(0,68))}</text>`).join("")}</svg></div>`;
+}
+document.addEventListener("change", e=>{if(e.target.id==="depRoot" && CASE && CASE.signals) document.getElementById("depGraph").innerHTML=graphFor(CASE.signals.dependencies,e.target.value);});
+
 route();
 </script></body></html>
+
