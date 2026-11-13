@@ -228,11 +228,13 @@ details.src{border-top:1px solid var(--line);padding:10px 0} details.src summary
   .report .page-break{break-before:page}
 }
 @media (prefers-reduced-motion:no-preference){ .btn,.q{transition:border-color .15s} }
+[hidden]{display:none!important}
+.qcard h3:focus{outline:2px solid var(--line);outline-offset:4px}
 </style>
 </head>
-<body>
+<body><div class="banner info" style="margin:16px"><b>Team review · 13 November 2026</b> ORCA feedback edition. <a href="https://thessaly.github.io/fin-procurement-toolkit/">Current version</a></div>
 <header class="top"><div class="wrap">
-  <a class="brand" href="#home"><span class="mark">FIN</span><span>Open Source Procurement Toolkit</span><span class="ver">V7</span></a>
+  <a class="brand" href="#home"><span class="mark">FIN</span><span>Open Source Procurement Toolkit</span><span class="ver">Prototype</span></a>
   <nav class="main" aria-label="Sections">
     <a href="#home" data-nav="home">Assessment</a>
     <a href="#about" data-nav="about">About</a>
@@ -490,7 +492,7 @@ async function fetchGitHub(ref, token){
   const sorted = cl.slice().sort((a,b)=>(b.contributions||0)-(a.contributions||0));
   const lastPage = contributors && contributors.__headers ? lastPageFromLink(contributors.__headers.link) : null;
   const people = {
-    contributorsCount: cl.length, contributorsCapped: cl.length >= 100, contributorsPages: lastPage,
+    contributorsCount: Array.isArray(contributors) ? cl.length : null, contributorsCapped: cl.length >= 100, contributorsPages: lastPage,
     topShare: total ? (sorted[0].contributions||0)/total : null,
     top3Share: total ? sorted.slice(0,3).reduce((a,c)=>a+(c.contributions||0),0)/total : null,
     recentAuthors: Array.isArray(commits) ? new Set(commits.map(c => (c.author && c.author.login) || (c.commit && c.commit.author && c.commit.author.email) || "?")).size : null
@@ -509,12 +511,15 @@ async function fetchGitHub(ref, token){
     opened180d: opened180 && typeof opened180.total_count === "number" ? opened180.total_count : null,
     merged180d: merged180 && typeof merged180.total_count === "number" ? merged180.total_count : null
   };
+  const licenseFile = await getJSON(base + "/license", H, errors, "license file");
+  const sbomResult = await getJSON(base + "/dependency-graph/sbom", H, errors, "dependency graph");
   const lic = repo.license && repo.license.spdx_id && repo.license.spdx_id !== "NOASSERTION" ? repo.license.spdx_id : (repo.license ? "unrecognized" : null);
   const signals = {
     ok:true, source:"GitHub", host:"github.com", owner:ref.owner, repo:ref.repo, url: repo.html_url, fetchedAt: new Date().toISOString(),
     meta: { description: repo.description, homepage: repo.homepage, archived: !!repo.archived, disabled: !!repo.disabled, fork: !!repo.fork, createdAt: repo.created_at, pushedAt: repo.pushed_at, defaultBranch: repo.default_branch, stars: repo.stargazers_count, forks: repo.forks_count, watchers: repo.subscribers_count, topics: repo.topics||[], hasIssues: repo.has_issues, hasDiscussions: !!repo.has_discussions, hasWiki: repo.has_wiki, visibility: repo.visibility, language: repo.language },
-    license: { spdx: lic, name: repo.license ? repo.license.name : null, url: repo.license ? `${repo.html_url}/blob/${repo.default_branch}/LICENSE` : null, osi: lic ? OSI_SPDX.has(lic) : null, hardware: lic ? HW_SPDX.has(lic) : null },
+    license: { spdx: lic, name: repo.license ? repo.license.name : null, url: licenseFile && licenseFile.html_url || (Array.isArray(root) && root.find(e => /^(license|licence|copying)(\.|$)/i.test(e.name)) || {}).html_url || null, osi: lic ? OSI_SPDX.has(lic) : null, hardware: lic ? HW_SPDX.has(lic) : null },
     community: cp ? { health: cp.health_percentage, description: cp.description, documentation: cp.documentation } : null,
+    dependencies: normalizeDependencies(sbomResult, repo.html_url),
     files, people, activity, issues, scorecard: null, errors
   };
   signals.scorecard = await fetchScorecard("github.com", ref.owner, ref.repo, errors);
@@ -794,24 +799,24 @@ function computeRoute(c, S, answers){
 const SUPPORT = [["none","No purchase / assistance identifying options"],["maintenance","Maintenance or support"],["hosting","External hosting / service"],["development","Development / modification"],["equipment","Physical equipment / fabrication"],["funding","Upstream funding"],["training","Training / implementation"]];
 const DATA_OPTS = [["public","Public / non-sensitive"],["internal","Internal / confidential"],["personal","Personal or sensitive"],["regulated","Regulated (health, student records, export-controlled)"]];
 const SYSTEMS_OPTS = [["local","Local team use"],["shared","Shared or departmental service"],["institutional","Institution-wide or externally hosted"]];
-const IMPACT_OPTS = [["low","Low"],["moderate","Moderate"],["high","High"]];
+const IMPACT_OPTS = [["low","Low: work can continue with an easy workaround"],["moderate","Moderate: delays or repeat work"],["high","High: essential service, major loss or safety consequences"]];
 const CLINICAL_OPTS = [["unknown","Unknown"],["no","No"],["yes","Yes"]];
 const TYPE_OPTS = [["software","Software"],["hardware","Hardware"],["both","Software and hardware"],["service","Service"]];
 
 const TEN = [
   { n:1, key:"objective",  q:"What is the research objective?", label:"Research goal", hint:"Describe the intended outcome and how it will be evaluated. A shortened version of this response is used as the assessment title.", xw:["Q01"] },
-  { n:2, key:"rationale",  q:"Why is an open-source approach appropriate?", label:"Rationale and alternatives considered", hint:"Relevant considerations may include reproducibility, adaptation, repair, cost or continuity. Briefly note any existing tools or alternatives considered.", xw:["Q01","Q38","Q39"] },
+  { n:2, key:"rationale",  q:"How will you use it, and why choose open source?", label:"Intended use, research fit and alternatives", hint:"Describe who will use it, what it must work with, and why open source fits. Include alternatives and any existing open-source tools. For hardware, mention fabrication or calibration.", xw:["Q01","Q38","Q39"] },
   { n:3, key:"candidate",  q:"What software or hardware are you considering?", xw:["Q02","Q37"] },
   { n:4, key:"use",        q:"What is the intended use?", label:"Use and operating context", hint:"Who will use it? What must it work with? For hardware, describe fabrication, calibration, repair or physical use. Mention existing open-source tools where relevant.", xw:["Q34","Q35","Q36","Q37","Q57"] },
-  { n:5, key:"support",    q:"What institutional support or expenditure is required?", hint:"Select all that apply. These selections determine the relevant review areas.", xw:["Q02","Q26","Q41","Q48","Q53","Q54","Q55","Q61"] },
+  { n:5, key:"support",    q:"What help do you need from your institution?", hint:"Select the practical help you need. For example: pay a provider to maintain the tool; host it on institutional servers; pay for modifications; or purchase fabrication. Choose no purchase if you only need advice.", xw:["Q02","Q26","Q41","Q48","Q53","Q54","Q55","Q61"] },
   { n:6, key:"exposure",   q:"What are the potential consequences of failure or misuse?", xw:["Q31","Q33","Q52","Q58"] },
-  { n:7, key:"licensing",  q:"Are the licensing and usage rights suitable?", label:"License, design rights and known obligations", hint:"Identify the license and permission to use, modify, distribute or fabricate. Include dependency obligations. Unknown is acceptable and creates a follow-up.", xw:["Q03","Q04","Q05","Q06","Q07","Q53"], auto:true },
-  { n:8, key:"maintenance",q:"What maintenance and continuity arrangements are available?", label:"Available support and continuity", hint:"Name actual maintainer / supplier availability and your team's capacity. Explain what happens if support or funding stops.", xw:["Q08","Q10","Q14","Q16","Q23","Q24","Q25","Q26","Q27","Q43","Q44","Q45","Q46","Q47"], auto:true },
-  { n:9, key:"resources",  q:"What resources and validation procedures are required?", label:"Resources, cost and acceptance", hint:"Estimate staff effort and lifecycle cost. Include practical testing, documentation, accessibility and hardware acceptance where relevant. Unknown is acceptable.", xw:["Q18","Q19","Q20","Q21","Q22","Q28","Q29","Q30","Q32","Q48","Q49","Q50","Q51","Q57"], auto:true },
+  { n:7, key:"licensing",  q:"What does the license say?", label:"License, design rights and known obligations", hint:"Identify the license and permission to use, modify, distribute or fabricate. Include dependency obligations. Unknown is acceptable and creates a follow-up.", xw:["Q03","Q04","Q05","Q06","Q07","Q53"], auto:true },
+  { n:8, key:"maintenance",q:"What does the repository show about maintenance?", label:"Available support and continuity", hint:"Name actual maintainer / supplier availability and your team's capacity. Explain what happens if support or funding stops.", xw:["Q08","Q10","Q14","Q16","Q23","Q24","Q25","Q26","Q27","Q43","Q44","Q45","Q46","Q47"], auto:true },
+  { n:9, key:"resources",  q:"Has your team tested this for the intended use?", label:"Resources, cost and acceptance", hint:"Estimate staff effort and lifecycle cost. Include practical testing, documentation, accessibility and hardware acceptance where relevant. Unknown is acceptable.", xw:["Q18","Q19","Q20","Q21","Q22","Q28","Q29","Q30","Q32","Q48","Q49","Q50","Q51","Q57"], auto:true },
   { n:10,key:"contact",    q:"Who is responsible for coordinating this request?", label:"Research team contact and responsible unit", hint:"Identify the responsible person or role and their unit. This information is recorded in the downloaded record only; no notification is sent.", xw:["Q49","Q59","Q60","Q62"] }
 ];
 
-function emptyForm(){ return { objective:"", rationale:"", candidate:"", type:"software", version:"", repoUrl:"", use:"", support:[], data:"public", systems:"local", impact:"moderate", clinical:"unknown", licensing:"", maintenance:"", resources:"", contact:"", drafts:{} }; }
+function emptyForm(){ return { objective:"", rationale:"", candidate:"", type:"software", version:"", repoUrl:"", use:"", support:[], data:"public", systems:"local", impact:"moderate", clinical:"unknown", licensing:"", maintenance:"", resources:"", contact:"", deliverable:"", provider:"", budget:"", localTested:"", testNotes:"", drafts:{} }; }
 
 // Derive the flags the route logic uses from the form
 function formToContext(f){
@@ -833,6 +838,8 @@ function draftAnswers(S){
   if(!S || !S.ok) return {};
   const L = S.license, A = S.activity, P = S.people, F = S.files, I = S.issues, sc = S.scorecard; const d = daysSince(S.meta.pushedAt);
   const lic = [];
+  lic.push(`License classification: ${licenseClass(L.spdx)}.`);
+  if(L.url) lic.push(`License text: ${L.url}`);
   if(L.spdx && L.spdx !== "unrecognized") lic.push(`License detected: ${L.spdx}${L.name && L.name !== L.spdx ? ` (${L.name})` : ""}${L.osi ? ", OSI-approved" : L.hardware ? ", an open hardware/content license" : ", not on the OSI list used here"}.`);
   else if(L.spdx === "unrecognized") lic.push("A license file exists but the host could not identify it; it needs reading.");
   else lic.push("Unknown: no license detected in the repository; license and intended-use obligations need review.");
@@ -843,7 +850,7 @@ function draftAnswers(S){
 
   const m = [];
   m.push(S.meta.archived ? "The upstream repository is archived (read-only)." : d == null ? "" : `Last activity ${d} days ago${A.commits90d != null ? `, ${A.commits90d}${A.commits90dCapped?"+":""} commits in the last 90 days` : ""}.`);
-  if(A.latestRelease) m.push(`Latest release ${A.latestRelease.tag || A.latestRelease.name} on ${fmtDate(A.latestRelease.date)}; ${A.releasesLastYear} release${A.releasesLastYear===1?"":"s"} in the last 12 months.`); else if(A.latestTag) m.push(`No releases published; latest tag ${A.latestTag}.`); else m.push("No releases found.");
+  if(A.latestRelease) m.push(`Latest release ${A.latestRelease.tag || A.latestRelease.name} on ${fmtDate(A.latestRelease.date)}; ${A.releasesLastYear} release${A.releasesLastYear===1?"":"s"} in the last 12 months.`); else if(A.latestTag) m.push(`No releases published; latest tag ${A.latestTag}.`); else m.push("No release evidence retrieved; this does not establish that releases are absent.");
   if(P.contributorsCount != null) m.push(`${P.contributorsCount}${P.contributorsCapped?"+":""} contributors; the top contributor accounts for ${pct(P.topShare)} of counted contributions${P.recentAuthors != null ? `; ${P.recentAuthors} distinct authors in the last 90 days` : ""}.`);
   if(I.closed180d != null) m.push(`${I.opened180d ?? "—"} issues opened and ${I.closed180d} closed in the last 180 days${I.merged180d != null ? `; ${I.merged180d} pull requests merged` : ""}.`);
   if(F.governance || F.maintainers) m.push(`Governance or maintainer documentation present (${[F.governance, F.maintainers].filter(Boolean).join(", ")}).`); else m.push("No governance or maintainers file found; decision authority needs asking.");
@@ -853,8 +860,8 @@ function draftAnswers(S){
   const r = [];
   const docs = [F.readme && "README", F.contributing && "CONTRIBUTING", F.docsDir && F.docsDir + "/", F.changelog && "changelog"].filter(Boolean);
   r.push(docs.length ? `Documentation present: ${docs.join(", ")}.` : "No standard documentation files found.");
-  r.push(F.workflows && F.workflows.length ? `Continuous integration configured (${F.workflows.length} workflow${F.workflows.length===1?"":"s"})${F.testsDir ? " and a tests folder is present" : ""}.` : F.testsDir ? "A tests folder is present but no CI configuration was found." : "No tests or CI configuration found.");
-  r.push(F.security ? "A security policy (vulnerability disclosure route) is published." : "No security policy found; there is no documented route to report vulnerabilities.");
+  r.push(F.workflows && F.workflows.length ? `Continuous integration configured (${F.workflows.length} workflow${F.workflows.length===1?"":"s"})${F.testsDir ? " and a tests folder is present" : ""}.` : F.testsDir ? "A tests folder is present but no CI configuration was found." : "No tests or CI configuration detected in the inspected paths; this does not establish that the project is untested.");
+  r.push(F.security ? "A security policy (vulnerability disclosure route) is published." : "No security policy detected in the inspected paths; other reporting routes may exist.");
   if(sc){ const low = Object.entries(sc.checks).filter(([k,v]) => v.score != null && v.score >= 0 && v.score < 4).map(([k]) => k); r.push(`OpenSSF Scorecard ${sc.score != null ? sc.score.toFixed(1) : "—"}/10${low.length ? ` (low: ${low.join(", ")})` : ""}.`); }
   if(F.dependabot || F.renovate) r.push("Automated dependency updates are configured.");
   r.push("Still to estimate: staff effort, lifecycle cost including exit, and acceptance tests" + (F.hardware && F.hardware.length ? " including fabrication, calibration and safety checks" : "") + ".");
@@ -904,36 +911,40 @@ function areaSignalSummary(a, c){
   const n = { ok:0, bad:0, mixed:0 }; items.forEach(i => { if(i.ok === true) n.ok++; else if(i.ok === false) n.bad++; else if(i.ok === "mixed") n.mixed++; });
   return { count: items.length, ok: n.ok, bad: n.bad, mixed: n.mixed, state: n.bad ? "bad" : n.mixed ? "warn" : n.ok ? "ok" : "none" };
 }
-// ---------- Example request: Jupyter Notebook ----------
-// Illustrative snapshot of github.com/jupyter/notebook for the demo roles. It is NOT a live reading:
+// ---------- Example request: JupyterHub ----------
+// Illustrative snapshot of github.com/jupyterhub/jupyterhub for the demo roles. It is NOT a live reading:
 // figures are plausible for the project but were not fetched. "Read live" replaces it with real signals.
 function mockSignals(){
   const ago = (d) => new Date(Date.now() - d*864e5).toISOString();
   const checks = { "Maintained":{score:10,reason:"30 commit(s) and 25 issue activity found in the last 90 days"}, "License":{score:10,reason:"license file detected"}, "Security-Policy":{score:10,reason:"security policy file detected"}, "CI-Tests":{score:10,reason:"all CI tests passed"}, "Code-Review":{score:8,reason:"most changes are reviewed"}, "Signed-Releases":{score:-1,reason:"no releases found in the release workflow"}, "Branch-Protection":{score:3,reason:"branch protection is not maximal"}, "Dependency-Update-Tool":{score:10,reason:"update tool detected"}, "Pinned-Dependencies":{score:4,reason:"dependencies not pinned by hash"}, "Vulnerabilities":{score:10,reason:"0 existing vulnerabilities detected"}, "SAST":{score:7,reason:"SAST tool detected"}, "Fuzzing":{score:0,reason:"project is not fuzzed"}, "Token-Permissions":{score:5,reason:"some workflow tokens have write permissions"}, "Binary-Artifacts":{score:10,reason:"no binaries found"}, "Dangerous-Workflow":{score:10,reason:"no dangerous workflow patterns detected"}, "Packaging":{score:10,reason:"packaging workflow detected"}, "Contributors":{score:10,reason:"project has contributors from several organizations"}, "CII-Best-Practices":{score:0,reason:"no effort to earn an OpenSSF best practices badge"} };
   Object.values(checks).forEach(c => { c.url = "https://github.com/ossf/scorecard/blob/main/docs/checks.md"; });
   return {
-    ok:true, example:true, source:"GitHub (example snapshot)", host:"github.com", owner:"jupyter", repo:"notebook", url:"https://github.com/jupyter/notebook", fetchedAt: ago(1),
-    meta: { description:"Jupyter Interactive Notebook", homepage:"https://jupyter-notebook.readthedocs.io", archived:false, disabled:false, fork:false, createdAt:"2015-04-09T00:00:00Z", pushedAt: ago(3), defaultBranch:"main", stars:12300, forks:5200, watchers:600, topics:["jupyter","notebook","jupyterlab"], hasIssues:true, hasDiscussions:true, hasWiki:false, visibility:"public", language:"Jupyter Notebook" },
-    license: { spdx:"BSD-3-Clause", name:"BSD 3-Clause \"New\" or \"Revised\" License", url:"https://github.com/jupyter/notebook/blob/main/LICENSE", osi:true, hardware:false },
-    community: { health: 100, description:"Jupyter Interactive Notebook", documentation:"https://jupyter-notebook.readthedocs.io" },
+    ok:true, example:true, source:"GitHub (example snapshot)", host:"github.com", owner:"jupyterhub", repo:"jupyterhub", url:"https://github.com/jupyterhub/jupyterhub", fetchedAt: ago(1),
+    meta: { description:"Multi-user Jupyter service", homepage:"https://jupyterhub.readthedocs.io", archived:false, disabled:false, fork:false, createdAt:"2015-04-09T00:00:00Z", pushedAt: ago(3), defaultBranch:"main", stars:12300, forks:5200, watchers:600, topics:["jupyter","notebook","jupyterlab"], hasIssues:true, hasDiscussions:true, hasWiki:false, visibility:"public", language:"JupyterHub" },
+    license: { spdx:"BSD-3-Clause", name:"BSD 3-Clause \"New\" or \"Revised\" License", url:"https://github.com/jupyterhub/jupyterhub/blob/main/LICENSE", osi:true, hardware:false },
+    community: { health: 100, description:"Multi-user Jupyter service", documentation:"https://jupyterhub.readthedocs.io" },
     files: { readme:"README.md", license:"LICENSE", contributing:"CONTRIBUTING.md", codeOfConduct:"CODE_OF_CONDUCT.md", security:"SECURITY.md", governance:null, maintainers:null, roadmap:null, changelog:"CHANGELOG.md", citation:null, codemeta:null, support:null, funding:null, docsDir:"docs", testsDir:null, dependabot:".github/dependabot.yml", renovate:null, ciFile:null, issueTemplate:".github/ISSUE_TEMPLATE", prTemplate:null, workflows:["build.yml","check-release.yml","docs.yml","enforce-label.yml","prep-release.yml","publish-release.yml","ui-tests.yml","update-snapshots.yml"], manifests:["package.json","pyproject.toml"], hardware:[], preCommit:".pre-commit-config.yaml" },
     people: { contributorsCount:100, contributorsCapped:true, contributorsPages:4, topShare:0.22, top3Share:0.48, recentAuthors:9 },
-    activity: { commits90d:41, commits90dCapped:false, releasesCount:10, releasesCapped:true, latestRelease:{ tag:"v7.4.5", name:"v7.4.5", date: ago(18), url:"https://github.com/jupyter/notebook/releases", prerelease:false }, latestTag:null, releasesLastYear:9 },
+    activity: { commits90d:41, commits90dCapped:false, releasesCount:10, releasesCapped:true, latestRelease:{ tag:"example-release", name:"Illustrative release", date: ago(18), url:"https://github.com/jupyterhub/jupyterhub/releases", prerelease:false }, latestTag:null, releasesLastYear:9 },
     issues: { open:420, closed180d:96, opened180d:131, merged180d:84 },
-    scorecard: { score:7.1, date: ago(2).slice(0,10), version:"v5", commit:"example", checks, url:"https://scorecard.dev/viewer/?uri=github.com/jupyter/notebook" },
+    scorecard: { score:7.1, date: ago(2).slice(0,10), version:"v5", commit:"example", checks, url:"https://scorecard.dev/viewer/?uri=github.com/jupyterhub/jupyterhub" },
     errors: []
   };
 }
 function mockCase(){
-  const c = newCase("https://github.com/jupyter/notebook", "Jupyter Notebook");
+  const c = newCase("https://github.com/jupyterhub/jupyterhub", "JupyterHub");
   c.example = true;
   Object.assign(c.form, {
     objective:"Provide a shared computational notebook environment for the graduate data-analysis course and for reproducible lab workflows.",
     rationale:"Students and staff already use Jupyter; notebooks are the de facto format for sharing analyses and the lab's methods must be reproducible by others. Commercial hosted notebooks were considered but lock data into a vendor and cost per seat.",
-    candidate:"Jupyter Notebook", type:"software", version:"7.x", repoUrl:"https://github.com/jupyter/notebook",
-    use:"About 60 students and 12 researchers; runs on the department's Linux server behind single sign-on; must work with the HPC cluster's Python environments and the institutional storage. Local IT will deploy it; the course starts in February.",
-    support:["maintenance","training"], data:"internal", systems:"shared", impact:"moderate", clinical:"no",
-    contact:"Dr A. Example, Department of Earth Sciences"
+    candidate:"JupyterHub", type:"software", version:"To be agreed", repoUrl:"https://github.com/jupyterhub/jupyterhub",
+    use:"About 60 students and 12 researchers; a contracted provider will host and operate JupyterHub with institutional sign-on. Local IT will manage access and integration; the course team will manage teaching materials. The course starts in February.",
+    support:["hosting","maintenance","training"], data:"internal", systems:"shared", impact:"moderate", clinical:"no",
+    deliverable:"A 12-month managed JupyterHub service for 60 students and 12 researchers: setup, hosting, backups, updates, incident support and handover at contract end. This is payment for a service, not a Jupyter software licence.",
+    provider:"Example Research Hosting Ltd (fictional provider; procurement must identify and assess the actual supplier).",
+    budget:"Illustrative budget: EUR 12,000 for 12 months plus 5 local IT days for setup. Confirm taxes, storage limits, renewal and exit costs in a quotation.",
+    localTested:"no", testNotes:"Plan a pilot with representative users before acceptance.",
+    contact:"Course lead, Department of Earth Sciences (fictional example)"
   });
   c.signals = mockSignals(); c.evidence = deriveEvidence(c.signals);
   const d = draftAnswers(c.signals); c.form.drafts = d; c.form.licensing = d.licensing; c.form.maintenance = d.maintenance; c.form.resources = d.resources;
@@ -1026,41 +1037,62 @@ window.addEventListener("hashchange", route);
 
 // ---------- Home: one input ----------
 function viewHome(){
-  return `
-  <section class="hero">
-    <p class="eyebrow">Fostering Innovation Network · pilot portal</p>
-    <h1>Make it easy for your institution to adopt and support open source</h1>
-    <p class="muted lead">Describe what you need. The toolkit checks the project and prepares the review.</p>
+  return `<section class="hero">
+    <p class="eyebrow">Fostering Innovation Network · prototype</p>
+    <h1>Request institutional support for open source</h1>
+    <p class="muted lead">Use this toolkit when you need your institution to fund, buy or organise support for open-source software or hardware. It helps you describe the request and helps staff decide what needs checking.</p>
+    <p>For example: pay a provider to host a shared research service, commission improvements to a tool, fund maintenance of an in-house project, or buy equipment built from open designs.</p>
+    <details><summary>Do I need this to use free software?</summary><p>Simply installing Jupyter on your laptop is not a purchase. This pathway is for a specific request for institutional support or spending. Any local IT or data policies still apply.</p></details>
     <div class="roles">
-      <a class="role" href="#home" data-act="role-researcher"><span class="eyebrow">I am a researcher</span><b>Describe a request</b><span class="small muted">See the form filled in for an example request: Jupyter Notebook for a graduate course. Then start your own.</span></a>
-      <a class="role" href="#home" data-act="role-reviewer"><span class="eyebrow">I am a reviewer</span><b>Review a request</b><span class="small muted">See the procurement review of the same example: the areas that apply, the signals, and the record.</span></a>
+      <a class="role" href="#home" data-act="new-request"><span class="eyebrow">Researcher, librarian or other requester</span><b>Start my request</b><span class="small muted">Describe what you need, who would provide it and what support you are asking for. A project link is optional.</span></a>
+      <a class="role" href="#home" data-act="role-reviewer"><span class="eyebrow">Procurement, IT, library or research support staff</span><b>${CASE && !CASE.example ? "Review this request" : "Explore an example review"}</b><span class="small muted">Check the request and its sources, identify follow-ups and record a decision. Specialist colleagues can review the relevant areas.</span></a>
     </div>
-    <form id="startForm" class="start">
-      <input type="url" id="startUrl" name="url" placeholder="Or paste your own repository link: https://github.com/org/project" aria-label="Repository link" autocomplete="off">
-      <button class="btn primary big" type="submit">Start</button>
-    </form>
-    <p class="small muted">GitHub, GitLab and Codeberg links work. <a href="#home" data-act="no-repo">No link yet? Start anyway</a>${HOSTED ? "" : ` · <a href="#home" data-act="token">Add a GitHub token</a>`}</p>
-    <div id="startExtra" class="card stack" hidden></div>
+    <p><a class="btn" href="#home" data-act="example-request">Try the managed JupyterHub example</a></p>
+    <details><summary>Start with a project repository link</summary><p class="small">A repository is where the project keeps its code or design files. Public information can help fill in the review.</p>
+    <form id="startForm" class="start"><input type="url" id="startUrl" name="url" placeholder="https://github.com/org/project" aria-label="Repository link" autocomplete="off"><button class="btn primary" type="submit">Start with this link</button></form>
+    <p class="small muted">GitHub, GitLab and Codeberg links work. <a href="#home" data-act="no-repo">Add a project name instead</a>${HOSTED ? "" : ` · <a href="#home" data-act="token">Add a GitHub token</a>`}</p><div id="startExtra" class="card stack" hidden></div></details>
     ${CASE && !CASE.example ? `<p><a class="btn" href="#form">Continue: ${h(caseTitle(CASE))}</a></p>` : ""}
   </section>
-  <section class="howto">
-    <div class="step"><span class="n">1</span><div><b>Researcher describes the request</b><p class="small muted">Licensing, maintenance and resources are drafted from the repository. Unknown is an acceptable answer.</p></div></div>
-    <div class="step"><span class="n">2</span><div><b>The route is set</b><p class="small muted">Light review when baseline evidence is sufficient; extended when data, systems, dependency or safety call for it.</p></div></div>
-    <div class="step"><span class="n">3</span><div><b>Reviewer works through the areas that apply</b><p class="small muted">Each area carries the researcher's answer, the repository signals, and a mark. Gaps can be flagged to the project owners.</p></div></div>
-  </section>
-  <p class="small muted">Nothing is stored in this browser or anywhere else. Download the record when you are done.</p>`;
+  <section class="howto" aria-label="How it works">
+    <div class="step"><span class="n">1</span><div><b>Describe the request</b><p class="small muted">Work through nine short steps. Explain the support needed; unknown answers are welcome.</p></div></div>
+    <div class="step"><span class="n">2</span><div><b>Check it with institutional staff</b><p class="small muted">Staff review the information and involve legal, IT or other colleagues where needed. Repository checks do not approve a request.</p></div></div>
+    <div class="step"><span class="n">3</span><div><b>Save a record and agree next steps</b><p class="small muted">Record the decision, remaining questions and responsible people, then download it for your institution's normal process.</p></div></div>
+  </section><p class="small muted">This prototype does not submit requests or contact anyone. Your answers stay in this page's memory and are lost on refresh or close. Download the record to keep them.</p>`;
 }
 function exampleBanner(c, role){
   if(!c.example) return "";
-  return `<div class="banner info"><b>Example request: Jupyter Notebook.</b> The answers and the repository snapshot are illustrative, not a live reading. ${!HOSTED ? `<a href="#" data-act="fetch">Read the repository live</a> · ` : ""}<a href="#${role === "reviewer" ? "form" : "review"}">Switch to the ${role === "reviewer" ? "researcher" : "reviewer"} view</a> · <a href="#home" data-act="start-own">Start your own request</a></div>`;
+  return `<div class="banner info"><b>Example request: a managed JupyterHub service.</b> The provider, budget, answers and repository snapshot are fictional examples, not a quote or a live assessment. ${!HOSTED ? `<a href="#" data-act="fetch">Read the repository live</a> · ` : ""}<a href="#${role === "reviewer" ? "form" : "review"}">Switch to the ${role === "reviewer" ? "researcher" : "reviewer"} view</a> · <a href="#home" data-act="start-own">Start your own request</a></div>`;
 }
 
+const REQUEST_STEPS = TEN.filter(t => t.n !== 4);
+const WHY = {
+ objective:"This helps staff understand the research or teaching outcome the request should support.",
+ rationale:"This explains who will use it, why it fits, and which alternatives you have considered.",
+ candidate:"The project and version identify what is being considered. A repository link lets us look for supporting information.",
+ support:"The institution needs to know what it is being asked to pay for or organise, and who will do the work.",
+ exposure:"The intended use determines which specialist colleagues may need to help; you do not need to assess legal risk yourself.",
+ licensing:"Repository information helps staff find the terms. They must check whether those terms fit the intended use.",
+ maintenance:"Activity is a starting point for discussing support and continuity, not proof that maintainers are available.",
+ resources:"Testing in your own setting helps agree acceptance criteria; upstream tests alone cannot establish suitability.",
+ contact:"A responsible person or team can answer follow-up questions and coordinate the next steps."
+};
+function guide(c){
+ const n=Math.max(0,Math.min(REQUEST_STEPS.length-1,c.ui.step||0));
+ return `<section class="card stack" aria-label="Request progress"><p id="stepStatus" aria-live="polite">Step ${n+1} of ${REQUEST_STEPS.length}: ${h(REQUEST_STEPS[n].q)}</p><progress id="stepProgress" max="${REQUEST_STEPS.length}" value="${n+1}" style="width:100%"></progress><label class="field">Go to a step<select id="requestStep">${REQUEST_STEPS.map((t,i)=>`<option value="${i}" ${i===n?"selected":""}>${i+1}. ${h(t.q)}</option>`).join("")}</select></label><p class="hint">Answer what you know. Missing information can be followed up; this is progress through the form, not an approval score.</p></section>`;
+}
+function moveStep(c,n){c.ui.step=Math.max(0,Math.min(REQUEST_STEPS.length-1,n));route();document.querySelector('.qcard:not([hidden]) h3')?.focus();}
+function evidenceLabel(items,S){
+ if(!S || !S.ok || !items.length) return "No information available";
+ if(S.example || (S.errors||[]).length || items.some(i=>i.ok!==true)) return "Needs review";
+ return "Information retrieved";
+}
+function evidenceLegend(){return `<p class="small muted"><b>Information retrieved</b>: a source returned information, not verified suitability. <b>Needs review</b>: illustrative, incomplete or uncertain information. <b>No information available</b>: nothing retrieved for this area, not proof of absence. Follow the source links and confirm the intended use.</p>`;}
 // ---------- The form ----------
 function viewForm(c){
   const f = c.form, S = c.signals, E = c.evidence || {}; const x = ctxOf(c); const R = computeRoute(x, S, {});
-  const card = (t, body) => `<section class="card qcard" id="q${t.n}"><p class="eyebrow">${String(t.n).padStart(2,"0")}</p><h3>${h(t.q)}</h3>${body}</section>`;
+  const card = (t, body) => `<section class="card qcard" id="q${t.n}" ${REQUEST_STEPS[c.ui.step||0].key===t.key?"":"hidden"}><p class="eyebrow">${String(t.n > 4 ? t.n-1 : t.n).padStart(2,"0")}</p><h3 tabindex="-1">${h(t.q)}</h3><p class="hint"><b>Why we ask:</b> ${h(WHY[t.key])}</p>${body}</section>`;
   const ta = (t, extra) => `<label class="field">${h(t.label)}${extra||""}<textarea data-f="${t.key}" rows="3">${h(f[t.key]||"")}</textarea><span class="hint">${h(t.hint)}</span></label>`;
-  const evFor = (t) => { const ids = t.xw.filter(id => E[id] && E[id].items && E[id].items.length); if(!ids.length) return ""; const items = []; const seen = new Set(); ids.forEach(id => E[id].items.forEach(it => { const k = it.label + it.value; if(it.src !== "toolkit" && !seen.has(k)){ seen.add(k); items.push(it); } })); return `<details class="evd" ${c.ui.ev[t.key] ? "open" : ""} data-evkey="${t.key}"><summary>What the repository shows <span class="muted">(${items.length} signals)</span></summary><div class="ev">${items.map(it => `<div class="evi"><span class="dot ${it.ok===true?"ok":it.ok===false?"bad":it.ok==="mixed"?"mixed":""}"></span><span class="evl">${h(it.label)}</span><span class="evv">${it.link ? `<a href="${h(it.link)}" target="_blank" rel="noopener">${h(it.value)}</a>` : h(it.value)}</span><span class="evs">${h(it.src)}</span></div>`).join("")}</div></details>`; };
+  const evFor = (t) => { const ids = t.xw.filter(id => E[id] && E[id].items && E[id].items.length); if(!ids.length) return ""; const items = []; const seen = new Set(); ids.forEach(id => E[id].items.forEach(it => { const k = it.label + it.value; if(it.src !== "toolkit" && !seen.has(k)){ seen.add(k); items.push(it); } })); return `<details class="evd" ${c.ui.ev[t.key] ? "open" : ""} data-evkey="${t.key}"><summary>Repository sources <span class="muted">(${items.length} signals)</span></summary><div class="ev">${items.map(it => `<div class="evi"><span class="dot ${it.ok===true?"ok":it.ok===false?"bad":it.ok==="mixed"?"mixed":""}"></span><span class="evl">${h(it.label)}</span><span class="evv">${it.link ? `<a href="${h(it.link)}" target="_blank" rel="noopener">${h(it.value)}</a>` : h(it.value)}</span><span class="evs">${h(it.src)}</span></div>`).join("")}</div></details>`; };
   const draftNote = (t) => f.drafts && f.drafts[t.key] ? (f[t.key] === f.drafts[t.key] ? `<span class="draft">Drafted from the repository on ${h(fmtDate(S && S.fetchedAt))}. Edit freely.</span>` : `<span class="draft">Edited. <a href="#form" data-act="redraft" data-key="${t.key}">Restore the repository draft</a></span>`) : "";
   return `
   <div class="formv">
@@ -1069,37 +1101,41 @@ function viewForm(c){
       <div class="row"><a class="btn small primary" href="#report">Review the record</a></div>
     </header>
     ${exampleBanner(c, "researcher")}
-    ${S && S.ok ? `<section class="glance">${glanceTiles(S).map(t => `<div class="tile ${t.state}"><span class="tl">${h(t.label)}</span><span class="tv">${h(t.value)}</span><span class="ts"><i></i>${h(t.word)}</span>${t.sub ? `<span class="tsub">${h(t.sub)}</span>` : ""}</div>`).join("")}</section><p class="small muted">${S.example ? "Illustrative snapshot" : "Read " + h(fmtDate(S.fetchedAt)) + " from " + h(S.source)}${S.scorecard ? ` and OpenSSF Scorecard` : ""}${S.errors.length ? `; ${S.errors.length} call${S.errors.length===1?"":"s"} failed (<a href="#form" data-act="showlog">log</a>)` : ""}. Licensing, maintenance and resources below were drafted from these signals.</p><div id="fetchLogBox" class="log" hidden>${h(S.errors.join("\n"))}</div>` : ""}
+    ${guide(c)}
+    ${S && S.ok ? `<details><summary>Repository information and sources</summary>${evidenceLegend()}<section class="glance">${glanceTiles(S).map(t => `<div class="tile ${t.state}"><span class="tl">${h(t.label)}</span><span class="tv">${h(t.value)}</span><span class="ts"><i></i>${h(t.word)}</span>${t.sub ? `<span class="tsub">${h(t.sub)}</span>` : ""}</div>`).join("")}</section><p class="small muted">${S.example ? "Illustrative snapshot" : "Read " + h(fmtDate(S.fetchedAt)) + " from " + h(S.source)}${S.scorecard ? ` and OpenSSF Scorecard` : ""}${S.errors.length ? `; ${S.errors.length} call${S.errors.length===1?"":"s"} failed (<a href="#form" data-act="showlog">log</a>)` : ""}. Licensing, maintenance and resources below were drafted from these signals.</p><div id="fetchLogBox" class="log" hidden>${h(S.errors.join("\n"))}</div></details>` : ""}
     ${S && S.ok === false ? `<div class="banner warn"><b>Could not read the repository.</b> ${h((S.errors||[]).join(" "))} Answer the questions by hand, or fix the link in question 3.</div>` : ""}
     ${f.repoUrl && HOSTED ? `<div class="banner info">This hosted copy cannot reach repository APIs, so nothing is drafted here. Open the toolkit from your own site to have licensing, maintenance and resources pre-filled.</div>` : ""}
 
     ${card(TEN[0], ta(TEN[0]))}
-    ${card(TEN[1], ta(TEN[1]))}
+    ${card(TEN[1], ta(TEN[1]) + (f.use ? `<p class="small">Earlier operating-context answer: ${h(f.use)}</p>` : ""))}
     ${card(TEN[2], `<div class="grid2">
         <label class="field">Project / device / service<input type="text" data-f="candidate" value="${h(f.candidate)}" placeholder="Enter “Unknown” if not yet identified"><span class="hint">${S && S.ok && S.meta.description ? h(S.meta.description) : "Enter “Unknown” if a project or supplier has not yet been identified."}</span></label>
         <label class="field">Type<select data-f="type">${TYPE_OPTS.map(([k,v]) => `<option value="${k}" ${f.type===k?"selected":""}>${v}</option>`).join("")}</select></label>
         <label class="field">Version / design revision, if known<input type="text" data-f="version" value="${h(f.version)}"></label>
         <label class="field urlfield">Project / design URL, if available<div class="row"><input type="url" data-f="repoUrl" id="repoUrlField" value="${h(f.repoUrl)}" placeholder="https://github.com/org/project">${HOSTED ? "" : `<button type="button" class="btn small" data-act="fetch" id="fetchBtn">${S && S.ok ? "Re-read" : "Read repository"}</button>`}</div><span class="hint">A GitHub, GitLab or Codeberg link lets the toolkit draft the licensing, maintenance and resources answers.</span></label>
       </div>`)}
-    ${card(TEN[3], ta(TEN[3]))}
-    ${card(TEN[4], `<p class="small muted">${h(TEN[4].hint)}</p><div class="checks">${SUPPORT.map(([k,v]) => `<label class="check"><input type="checkbox" data-fs="${k}" ${(f.support||[]).includes(k)?"checked":""}><span>${v}</span></label>`).join("")}</div>`)}
-    ${card(TEN[5], `<div class="grid2">
+    ${card(TEN[4], `<p class="small muted">${h(TEN[4].hint)}</p><div class="checks">${SUPPORT.map(([k,v]) => `<label class="check"><input type="checkbox" data-fs="${k}" ${(f.support||[]).includes(k)?"checked":""}><span>${v}</span></label>`).join("")}</div>
+      <label class="field">What exactly should the institution fund or organise?<textarea data-f="deliverable" placeholder="Work to be delivered, users, period and expected result">${h(f.deliverable||"")}</textarea></label>
+      <label class="field">Who would provide it?<input data-f="provider" value="${h(f.provider||"")}" placeholder="Supplier, internal team, project organisation, or Unknown"><span class="hint">The open-source project and the paid provider may be different organisations.</span></label>
+      <label class="field">Estimated budget, staff time and period<textarea data-f="budget" placeholder="Include recurring costs, setup and exit, or say Unknown">${h(f.budget||"")}</textarea></label>`)}
+    ${card(TEN[5], `<p class="hint">Describe the situation; you do not need to judge legal risk. Personal data → privacy review; external hosting → IT/security review; possible injury or clinical use → safety review. License and contract questions go to legal/procurement.</p><div class="grid2">
         <label class="field">Data<select data-f="data">${DATA_OPTS.map(([k,v]) => `<option value="${k}" ${f.data===k?"selected":""}>${v}</option>`).join("")}</select></label>
         <label class="field">Systems<select data-f="systems">${SYSTEMS_OPTS.map(([k,v]) => `<option value="${k}" ${f.systems===k?"selected":""}>${v}</option>`).join("")}</select></label>
         <label class="field">Impact of failure<select data-f="impact">${IMPACT_OPTS.map(([k,v]) => `<option value="${k}" ${f.impact===k?"selected":""}>${v}</option>`).join("")}</select></label>
         <label class="field">Clinical / safety-critical<select data-f="clinical">${CLINICAL_OPTS.map(([k,v]) => `<option value="${k}" ${f.clinical===k?"selected":""}>${v}</option>`).join("")}</select></label>
       </div>
       <div id="routeBox">${routeBanner(R)}</div>`)}
-    ${card(TEN[6], ta(TEN[6], draftNote(TEN[6])) + evFor(TEN[6]))}
-    ${card(TEN[7], ta(TEN[7], draftNote(TEN[7])) + evFor(TEN[7]))}
-    ${card(TEN[8], ta(TEN[8], draftNote(TEN[8])) + evFor(TEN[8]))}
+    ${card(TEN[6], licensePanel(S) + autoPanel(c,"licensing") + evFor(TEN[6]) + dependencyPanel(S))}
+    ${card(TEN[7], autoPanel(c,"maintenance") + `<p class="hint">Activity does not establish that maintainers can take on work. The reviewer confirms provider availability, local ownership and continuity arrangements.</p>` + evFor(TEN[7]))}
+    ${card(TEN[8], `<p class="hint">This is about testing by your team for this use. Upstream automated tests do not answer it.</p><div class="checks">${["yes","no"].map(v => `<label class="check"><input type="radio" name="localTested" data-f="localTested" value="${v}" ${f.localTested===v?"checked":""}>${v==="yes"?"Yes":"No"}</label>`).join("")}</div><label class="field">Optional test notes<textarea data-f="testNotes">${h(f.testNotes||"")}</textarea></label>` + autoPanel(c,"resources") + evFor(TEN[8]))}
     ${card(TEN[9], `<label class="field">${h(TEN[9].label)}<input type="text" data-f="contact" value="${h(f.contact)}" placeholder="Name or role, unit"><span class="hint">${h(TEN[9].hint)}</span></label>`)}
+    <div class="row"><button class="btn" data-act="step-back" ${!(c.ui.step||0)?"disabled":""}>Previous</button>${(c.ui.step||0)<REQUEST_STEPS.length-1?`<button class="btn primary" data-act="step-next">Next step</button>`:`<a class="btn primary" href="#review">Continue to institutional review</a>`}</div>
     <div class="row" style="justify-content:space-between"><p class="small muted">Nothing is stored. The record is yours to download.</p><div class="row"><a class="btn primary" href="#report">Review the record</a><button class="btn" data-act="export-md">Download Markdown</button></div></div>
   </div>`;
 }
 function routeBanner(R){
   const main = R.triggers.filter(t => t.kind !== "follow-up"), fu = R.triggers.filter(t => t.kind === "follow-up");
-  return `<div class="banner route-${R.route}"><b>${R.route === "light" ? "Light review looks sufficient." : R.route === "extended" ? "This points to an extended review." : "Scope needs clarifying first."}</b> <span>${main.length ? "Because: " + main.map(t => h(t.text.replace(/\.$/,"")) + (t.refer ? ` (→ ${h(t.refer)})` : "")).join("; ") + "." : "No triggers from your answers or the baseline signals."}${fu.length ? " Follow-up: " + fu.map(t => h(t.text)).join(" ") : ""}</span></div>`;
+  return `<div class="banner route-${R.route}"><b>${R.route === "light" ? "A lighter review is suggested." : R.route === "extended" ? "This points to an extended review." : "Scope needs clarifying first."}</b> <span>${main.length ? "Because: " + main.map(t => h(t.text.replace(/\.$/,"")) + (t.refer ? ` (→ ${h(t.refer)})` : "")).join("; ") + "." : "No extended-review triggers identified from the available information. This is not an approval; institutional staff must confirm the scope and missing evidence."}${fu.length ? " Follow-up: " + fu.map(t => h(t.text)).join(" ") : ""}</span></div>`;
 }
 
 // At-a-glance tiles: status with a word beside each dot, never color alone
@@ -1120,17 +1156,19 @@ function glanceTiles(S){
   return t;
 }
 
-// ---------- Procurement officer review (areas switched on by the answers) ----------
+// ---------- Institutional staff review (areas switched on by the answers) ----------
 function viewReview(c){
   const act = activeAreas(c), inact = inactiveAreas(c); const marked = act.filter(a => c.answers[a.id] && c.answers[a.id].verdict).length;
   return `
   <div class="formv">
     <header class="casehead">
-      <div class="stack" style="gap:4px;min-width:0"><p class="eyebrow">Procurement officer review</p><h1 style="font-size:clamp(22px,3vw,30px)">${h(caseTitle(c))}</h1><p class="muted small">${act.length} review areas apply to this request, set by the researcher's answers. Each shows what to check, the researcher's answer and what the repository shows. Mark each area and note what was done.</p></div>
+      <div class="stack" style="gap:4px;min-width:0"><p class="eyebrow">Institutional staff review</p><h1 style="font-size:clamp(22px,3vw,30px)">${h(caseTitle(c))}</h1><p class="muted small">${act.length} review areas apply to this request, set by the researcher's answers. Each shows what to check, the researcher's answer and what the repository shows. Mark each area and note what was done.</p></div>
       <div class="row"><a class="btn small" href="#form">Request form</a><a class="btn small primary" href="#report">Record</a></div>
     </header>
-    ${exampleBanner(c, "reviewer")}
-    <p class="small muted num">${marked}/${act.length} areas marked</p>
+    ${exampleBanner(c, "reviewer")}${evidenceLegend()}
+    ${licensePanel(c.signals)}
+    ${dependencyPanel(c.signals)}
+    <p class="small muted num" id="reviewProgress" aria-live="polite">${marked}/${act.length} areas marked</p>
     <div class="areas">${act.map(a => renderArea(c, a)).join("")}</div>
     ${inact.length ? `<details class="small muted"><summary>Not triggered by this request: ${inact.map(a => h(a.name)).join(", ")}</summary><p style="padding-top:6px">These areas switch on when the answers change (for example data that is not public, a paid provider, shared systems, or physical hardware).</p></details>` : ""}
     ${renderUpstream(c)}
@@ -1162,20 +1200,20 @@ function renderUpstream(c){
     <p class="small muted">The issue link opens the project's tracker with the title and text filled in; nothing is posted until you submit it there.</p>` : ""}
   </section>`;
 }
-function researcherText(c, n){ const t = TEN[n-1]; return tenAnswer(c, t); }
+function researcherText(c, n){ const t = TEN[n===4?1:n-1]; return tenAnswer(c, t); }
 function renderArea(c, a){
   const ans = c.answers[a.id] || {}; const v = ans.verdict || ""; const sp = areaSpecialist(a, c); const sum = areaSignalSummary(a, c); const items = areaEvidence(a, c); const open = c.ui.open[a.id];
   return `<article class="area ${v}" data-area="${a.id}">
     <div class="ahead">
       <div class="stack" style="gap:4px;min-width:0">
         <h3>${h(a.name)}${sp ? ` <span class="specialist">→ ${h(sp)}</span>` : ""}</h3>
-        <p class="small">${h(a.check)}</p>
+        <p class="small">${h(a.check)}</p><p class="small"><b>${evidenceLabel(items,c.signals)}</b>${c.signals?.ok ? " · " + (c.signals.example ? "Illustrative example" : "Retrieved " + h(fmtDate(c.signals.fetchedAt))) : ""}</p>
         ${sum ? `<p class="small sig ${sum.state}"><i></i>${sum.count} repository signal${sum.count===1?"":"s"}: ${sum.ok} positive${sum.mixed ? `, ${sum.mixed} to check` : ""}${sum.bad ? `, ${sum.bad} missing or negative` : ""}</p>` : `<p class="small muted">No repository signals for this area; rely on the researcher's answer and your own checks.</p>`}
       </div>
       <div class="seg">${AREA_VERDICTS.map(([k,l]) => `<label><input type="radio" name="a-${a.id}" value="${k}" data-area-verdict="${a.id}" ${v===k?"checked":""}>${l}</label>`).join("")}</div>
     </div>
-    <div class="ev"><div class="evi"><span class="dot ok"></span><span class="evl">Researcher</span><span class="evv">${a.from.map(n => `<b>${String(n).padStart(2,"0")}</b> ${h(researcherText(c, n) || "—")}`).join("<br>")}</span></div></div>
-    ${items.length ? `<details class="evd" ${open ? "open" : ""} data-evkey="${a.id}"><summary>What the repository shows <span class="muted">(${items.length})</span></summary><div class="ev">${items.map(it => `<div class="evi"><span class="dot ${it.ok===true?"ok":it.ok===false?"bad":it.ok==="mixed"?"mixed":""}"></span><span class="evl">${h(it.label)}</span><span class="evv">${it.link ? `<a href="${h(it.link)}" target="_blank" rel="noopener">${h(it.value)}</a>` : h(it.value)}</span><span class="evs">${h(it.src)}</span></div>`).join("")}</div></details>` : ""}
+    <div class="ev"><div class="evi"><span class="dot ok"></span><span class="evl">Researcher</span><span class="evv">${[...new Set(a.from.map(n=>n===4?2:n))].map(n => `<b>${String(n>4?n-1:n).padStart(2,"0")}</b> ${h(researcherText(c, n) || "—")}`).join("<br>")}</span></div></div>
+    ${items.length ? `<details class="evd" ${open ? "open" : ""} data-evkey="${a.id}"><summary>Repository sources <span class="muted">(${items.length})</span></summary><div class="ev">${items.map(it => `<div class="evi"><span class="dot ${it.ok===true?"ok":it.ok===false?"bad":it.ok==="mixed"?"mixed":""}"></span><span class="evl">${h(it.label)}</span><span class="evv">${it.link ? `<a href="${h(it.link)}" target="_blank" rel="noopener">${h(it.value)}</a>` : h(it.value)}</span><span class="evs">${h(it.src)}</span></div>`).join("")}</div></details>` : ""}
     <label class="field">Notes <textarea data-area-note="${a.id}" placeholder="What was checked, by whom, and where it is documented">${h(ans.note||"")}</textarea></label>
     <details class="small"><summary class="muted">Crosswalk questions behind this area</summary><ul class="xwl">${a.xw.map(id => QBYID[id] ? `<li><span class="mono">${id}</span> ${h(QBYID[id].q)}</li>` : "").join("")}</ul></details>
   </article>`;
@@ -1187,6 +1225,7 @@ function routePill(r){ return r === "light" ? `<span class="pill ok">Light revie
 function evidenceSnapshotRows(S){
   const files = ["readme","license","contributing","codeOfConduct","security","governance","maintainers","roadmap","changelog","citation","codemeta","funding","docsDir","testsDir"].filter(k => S.files[k]).map(k => String(S.files[k]));
   return [
+    ["Source", `${S.url || S.source} · ${S.example ? "Illustrative example, not live" : "Retrieved " + fmtDate(S.fetchedAt)}`],
     ["License", `${S.license.spdx || "none detected"}${S.license.osi ? " (OSI-approved)" : S.license.hardware ? " (open hardware / content license)" : ""}`],
     ["Activity", `last push ${fmtDate(S.meta.pushedAt)}; ${S.activity.commits90d ?? "—"}${S.activity.commits90dCapped?"+":""} commits in 90 days; ${S.activity.latestRelease ? "latest release " + (S.activity.latestRelease.tag||"") + " " + fmtDate(S.activity.latestRelease.date) : "no releases"}${S.meta.archived ? "; ARCHIVED" : ""}`],
     ["People", `${S.people.contributorsCount != null ? S.people.contributorsCount + (S.people.contributorsCapped?"+":"") + " contributors; top contributor " + pct(S.people.topShare) : "contributor data not available"}; ${S.people.recentAuthors ?? "—"} distinct authors in 90 days`],
@@ -1197,17 +1236,19 @@ function evidenceSnapshotRows(S){
 }
 function tenAnswer(c, t){
   const f = c.form;
+  if(t.key === "rationale") return [f.rationale, f.use].filter(Boolean).join("\n\n") || "—";
+  if(t.key === "resources") return `Local testing: ${f.localTested || "Not answered"}. ${f.testNotes || ""}\nRepository evidence: ${f.resources || "Not retrieved"}`;
   if(t.key === "candidate") return `${f.candidate || "—"} · ${label(TYPE_OPTS, f.type)}${f.version ? " · " + f.version : ""}${f.repoUrl ? " · " + f.repoUrl : ""}`;
-  if(t.key === "support") return (f.support||[]).map(k => label(SUPPORT,k)).join("; ") || "—";
+  if(t.key === "support") return [(f.support||[]).map(k => label(SUPPORT,k)).join("; "), "Requested work: " + (f.deliverable||"Unknown"), "Provider / responsible team: " + (f.provider||"Unknown"), "Budget and period: " + (f.budget||"Unknown")].join("\n");
   if(t.key === "exposure") return `Data: ${label(DATA_OPTS,f.data)} · Systems: ${label(SYSTEMS_OPTS,f.systems)} · Impact of failure: ${label(IMPACT_OPTS,f.impact)} · Clinical / safety-critical: ${label(CLINICAL_OPTS,f.clinical)}`;
   return f[t.key] || "—";
 }
 function viewReport(c){
   const S = c.signals; const E = c.evidence || {}; const x = ctxOf(c); const R = computeRoute(x, S, {}); const own = c.ownership || {};
   const specialist = [...new Set(R.triggers.filter(t => t.refer).map(t => t.refer))];
-  const unknowns = TEN.filter(t => /^unknown/i.test(String(c.form[t.key]||"").trim())).map(t => t.n);
+  const unknowns = REQUEST_STEPS.filter(t => /^unknown/i.test(String(c.form[t.key]||"").trim())).map(t => t.n>4?t.n-1:t.n);
   return `
-  <div class="row noprint" style="justify-content:space-between"><div class="row"><a class="btn" href="#form">← Researcher form</a><a class="btn" href="#review">Procurement officer review</a></div><div class="row"><button class="btn" data-act="export-md">Download Markdown</button><button class="btn" data-act="export-json">Download JSON</button>${HOSTED ? "" : `<button class="btn primary" data-act="print">Print / save as PDF</button>`}</div></div>
+  <div class="row noprint" style="justify-content:space-between"><div class="row"><a class="btn" href="#form">← Researcher form</a><a class="btn" href="#review">Institutional staff review</a></div><div class="row"><button class="btn" data-act="export-md">Download Markdown</button><button class="btn" data-act="export-json">Download JSON</button>${HOSTED ? "" : `<button class="btn primary" data-act="print">Print / save as PDF</button>`}</div></div>
   <article class="report" id="reportDoc">
     <header class="stack">
       <p class="eyebrow">FIN open source procurement toolkit · assessment record</p>
@@ -1223,20 +1264,20 @@ function viewReport(c){
       <dl class="kv"><dt>Decision owner</dt><dd>${h(own.owner||"—")}</dd><dt>Operational owner</dt><dd>${h(own.operator||"—")}</dd><dt>Conditions</dt><dd>${h(own.conditions||"—")}</dd><dt>Review</dt><dd>${h(own.reviewDate||"—")}${own.reviewTrigger ? " · " + h(own.reviewTrigger) : ""}</dd></dl>
     </section>
     <section class="stack">
-      <h2>Researcher's answers</h2>
-      <dl class="ten">${TEN.map(t => `<dt><span class="mono">${String(t.n).padStart(2,"0")}</span> ${h(t.q)}</dt><dd>${h(tenAnswer(c,t))}${t.auto && c.form.drafts && c.form.drafts[t.key] && c.form[t.key] === c.form.drafts[t.key] ? ` <span class="small muted">(drafted from repository signals, unedited)</span>` : ""}</dd>`).join("")}</dl>
+      <h2>Request and supporting information</h2>
+      <dl class="ten">${TEN.filter(t => t.n !== 4).map(t => `<dt><span class="mono">${String(t.n > 4 ? t.n-1 : t.n).padStart(2,"0")}</span> ${h(t.q)}</dt><dd>${h(tenAnswer(c,t))}${t.auto && c.form.drafts && c.form.drafts[t.key] && c.form[t.key] === c.form.drafts[t.key] ? ` <span class="small muted">(drafted from repository signals, unedited)</span>` : ""}</dd>`).join("")}</dl>
     </section>
     ${S && S.ok ? `<section class="stack">
-      <h2>Repository evidence snapshot</h2>
+      <h2>Repository evidence snapshot</h2>${evidenceLegend()}
       <p class="small muted">${S.example ? "Illustrative example snapshot, not a live reading. " : ""}Fetched ${h(fmtDate(S.fetchedAt))} from ${h(S.source)}${S.scorecard ? `; OpenSSF Scorecard ${S.scorecard.score != null ? S.scorecard.score.toFixed(1) : "—"}/10 dated ${h(fmtDate(S.scorecard.date))}` : "; no Scorecard result"}. Dated signals; they do not allocate contractual responsibility.</p>
       <dl class="kv">${evidenceSnapshotRows(S).map(([k,v]) => `<dt>${h(k)}</dt><dd>${h(v)}</dd>`).join("")}</dl>
       ${S.errors && S.errors.length ? `<p class="small muted">Not retrieved: ${h(S.errors.join("; "))}</p>` : ""}
     </section>` : ""}
     <section class="stack">
-      <h2>Procurement review</h2>
+      <h2>Institutional review</h2>
       <div class="tablewrap"><table><thead><tr><th>Area</th><th style="width:130px">Mark</th><th>Notes and signals</th></tr></thead><tbody>
       ${activeAreas(c).map(a => { const ans = c.answers[a.id]||{}; const sp = areaSpecialist(a, c); const sum = areaSignalSummary(a, c);
-        return `<tr><td><b>${h(a.name)}</b>${sp ? `<br><span class="specialist">→ ${h(sp)}</span>` : ""}<div class="small muted">${h(a.check)}</div></td><td><span class="v ${ans.verdict||"unset"}">${h(ans.verdict ? AREA_VLABEL[ans.verdict] : "open")}</span></td><td class="small">${ans.note ? h(ans.note) + " " : ""}${sum ? `<span class="muted">${sum.count} signals: ${sum.ok} positive${sum.mixed ? `, ${sum.mixed} to check` : ""}${sum.bad ? `, ${sum.bad} missing or negative` : ""}</span>` : ""}</td></tr>`; }).join("")}
+        return `<tr><td><b>${h(a.name)}</b>${sp ? `<br><span class="specialist">→ ${h(sp)}</span>` : ""}<div class="small muted">${h(a.check)}</div></td><td><span class="v ${ans.verdict||"unset"}">${h(ans.verdict ? AREA_VLABEL[ans.verdict] : "open")}</span></td><td class="small">${h(evidenceLabel(areaEvidence(a,c),S))}. ${ans.note ? h(ans.note) + " " : ""}${sum ? `<span class="muted">${sum.count} signals: ${sum.ok} positive${sum.mixed ? `, ${sum.mixed} to check` : ""}${sum.bad ? `, ${sum.bad} missing or negative` : ""}</span>` : ""}</td></tr>`; }).join("")}
       </tbody></table></div>
       ${inactiveAreas(c).length ? `<p class="small muted">Not triggered by this request: ${inactiveAreas(c).map(a => h(a.name)).join(", ")}.</p>` : ""}
     </section>
@@ -1248,11 +1289,11 @@ function viewReport(c){
 // ---------- About / Sources ----------
 function viewAbout(){
   return `
-  <section class="stack"><p class="eyebrow">About</p><h1>About this pilot portal</h1><p class="muted" style="max-width:64ch">This prototype explores how an open source software or hardware request could move through an academic procurement process while using existing assessment resources rather than creating a new maturity framework.</p></section>
+  <section class="stack"><p class="eyebrow">About</p><h1>When to use this toolkit</h1><p class="muted" style="max-width:64ch">Use this prototype to prepare a concrete request for your institution to fund or organise open-source support. Describe the work, the provider or internal team, and the expected cost. Institutional staff then check the relevant information and agree next steps. It can support universities and other research organisations; it does not grant permission or place orders.</p></section>
   <div class="grid2">
     <section class="card stack"><p class="eyebrow">Responsibilities</p><h3>Who provides which information?</h3>
-      <div class="grid2"><div><h4>Researcher / requester</h4><p class="small muted">Describes the request: the research need, technical context, candidate software or hardware, links to project information, intended use, support required, exposure, licensing, continuity, resources, and the responsible contact. Three answers are drafted from the repository for the researcher to confirm or correct.</p></div>
-      <div><h4>Procurement officer</h4><p class="small muted">Checks whether the evidence is sufficient against the source crosswalk, reviews providers and purchasing terms, coordinates university reviews, and confirms that responsibilities and ongoing costs are clear.</p></div></div></section>
+      <div class="grid2"><div><h4>Researcher / requester</h4><p class="small muted">Describes the request: the research need, technical context, candidate software or hardware, links to project information, intended use, support required, exposure, licensing, continuity, resources, and the responsible contact. Repository summaries support the licensing, maintenance and testing steps; staff review their meaning.</p></div>
+      <div><h4>Institutional staff</h4><p class="small muted">Procurement, IT, library or research support staff coordinate the review, check whether the evidence is sufficient, reviews providers and purchasing terms, coordinates university reviews, and confirms that responsibilities and ongoing costs are clear.</p></div></div></section>
     <section class="card stack"><p class="eyebrow">The pathway</p><h3>What the portal is testing</h3><p class="small muted">The FIN pilot tests whether a request can move through a documented pathway from <b>researcher input → procurement review → provider and contract review → institutional ownership</b>. Questions that require deeper technical, security, privacy, accessibility or legal analysis are referred to the institution's existing specialist processes; the toolkit marks them.</p></section>
   </div>
   <section class="card stack"><p class="eyebrow">Assessment routes</p><h3>Start light and expand only when needed</h3>
@@ -1265,7 +1306,7 @@ function viewAbout(){
       <div><h4>GitLab and Codeberg</h4><p class="small muted">Project metadata and license, repository tree, releases, commits, contributors and issue statistics (GitLab); repository, tree, releases, commits and closed issues (Gitea/Forgejo). Self-hosted GitLab instances work when their API is public.</p></div>
       <div><h4>OpenSSF Scorecard</h4><p class="small muted">Public Scorecard results for github.com and gitlab.com projects, each attached to the crosswalk question it informs.</p></div>
     </div>
-    <p class="small muted">Licensing, maintenance and resources receive a plain-language draft built from these signals, with the signals listed underneath. The draft is editable and is marked as a draft in the record until changed. Signals are dated; re-read before a decision.</p></section>
+    <p class="small muted">Licensing, maintenance and resources receive a plain-language draft built from these signals, with the signals listed underneath. Repository summaries are supporting information, not answers confirmed by a researcher. Signals are dated; re-read before a decision.</p></section>
   <section class="card stack"><h3>Using this prototype</h3><p class="small muted">Nothing is stored: the assessment lives in the page until you leave it, so download the record as Markdown, JSON or PDF. Public repository checks run from your browser against public APIs and count against those services' anonymous rate limits (GitHub: 60 requests an hour without a token; an assessment uses about a dozen). Submission and institutional approval systems are not connected.</p></section>`;
 }
 function viewSources(){
@@ -1297,11 +1338,14 @@ document.addEventListener("submit", (e) => {
 document.addEventListener("click", async (e) => {
   const b = e.target.closest("[data-act]"); if(!b) return;
   const act = b.dataset.act; const c = CASE;
+  if(act === "example-request"){ e.preventDefault(); CASE=mockCase(); location.hash="#form"; route(); return; }
+  if(act === "new-request"){ e.preventDefault(); if(!CASE || CASE.example) CASE=newCase(); location.hash="#form"; route(); return; }
   if(act === "role-researcher" || act === "role-reviewer"){ e.preventDefault(); if(!CASE || CASE.example) CASE = mockCase(); location.hash = act === "role-researcher" ? "#form" : "#review"; return; }
-  if(act === "start-own"){ e.preventDefault(); CASE = null; location.hash = "#home"; route(); $("#startUrl").focus(); return; }
+  if(act === "start-own"){ e.preventDefault(); CASE = null; location.hash = "#home"; route(); $("#startUrl").closest("details").open=true; $("#startUrl").focus(); return; }
   if(act === "no-repo"){ e.preventDefault(); const x = $("#startExtra"); x.hidden = false; x.innerHTML = `<label class="field">Project, device or service you are considering <input type="text" id="startName" placeholder="e.g. a lab-built incubator, or “Unknown”"></label><p class="small muted">Without a repository link nothing is drafted; you answer everything yourself. You can add a link later under the project details.</p>`; $("#startName").focus(); return; }
   if(act === "token"){ e.preventDefault(); const x = $("#startExtra"); x.hidden = false; x.innerHTML = `<label class="field">GitHub token <span class="hint">optional; kept in memory for this visit only and sent only to api.github.com. Raises the anonymous limit of 60 requests an hour.</span><input type="password" id="startToken" value="${h(SETTINGS.ghToken)}" autocomplete="off" placeholder="github_pat_…"></label>`; $("#startToken").focus(); return; }
   if(!c) return;
+  if(act === "step-next" || act === "step-back"){e.preventDefault();moveStep(c,(c.ui.step||0)+(act==="step-next"?1:-1));return;}
   if(act === "fetch"){ e.preventDefault(); const u = $("#repoUrlField"); if(u) c.form.repoUrl = u.value.trim(); return runFetch(); }
   if(act === "showlog"){ e.preventDefault(); const l = $("#fetchLogBox"); if(l) l.hidden = !l.hidden; return; }
   if(act === "redraft"){ e.preventDefault(); const k = b.dataset.key; c.form[k] = c.form.drafts[k]; persist(c); route(); return; }
@@ -1318,7 +1362,8 @@ function refreshRoute(c){ const box = $("#routeBox"); if(box) box.innerHTML = ro
 
 document.addEventListener("change", (e) => {
   const t = e.target; const c = CASE; if(!c) return;
-  if(t.dataset.areaVerdict){ const id = t.dataset.areaVerdict; c.answers[id] = Object.assign({}, c.answers[id], { verdict: t.value }); persist(c); const art = t.closest(".area"); if(art) art.className = "area " + t.value; }
+  if(t.id === "requestStep"){moveStep(c,Number(t.value));return;}
+  if(t.dataset.areaVerdict){ const id = t.dataset.areaVerdict; c.answers[id] = Object.assign({}, c.answers[id], { verdict: t.value }); persist(c); const art = t.closest(".area"); if(art) art.className = "area " + t.value; const progress=$("#reviewProgress"); if(progress) progress.textContent=`${activeAreas(c).filter(a=>c.answers[a.id]?.verdict).length}/${activeAreas(c).length} areas marked`; }
   else if(t.dataset.f){ c.form[t.dataset.f] = t.value; persist(c); if(["type","data","systems","impact","clinical"].includes(t.dataset.f)) refreshRoute(c); }
   else if(t.dataset.fs){ const s = new Set(c.form.support||[]); if(t.checked) s.add(t.dataset.fs); else s.delete(t.dataset.fs); if(t.dataset.fs === "none" && t.checked) { s.clear(); s.add("none"); document.querySelectorAll('[data-fs]').forEach(x => { if(x.dataset.fs !== "none") x.checked = false; }); } else if(t.checked) { s.delete("none"); const n = document.querySelector('[data-fs="none"]'); if(n) n.checked = false; } c.form.support = SUPPORT.map(([k]) => k).filter(k => s.has(k)); persist(c); refreshRoute(c); }
   else if(t.dataset.gap){ const set = new Set(c.upstream.selected); if(t.checked) set.add(t.dataset.gap); else set.delete(t.dataset.gap); c.upstream.selected = detectGaps(c.signals).map(g => g.id).filter(id => set.has(id)); c.upstream.text = null; persist(c); const top = window.scrollY; route(); window.scrollTo({ top }); }
@@ -1342,6 +1387,7 @@ async function runFetch(){
   const token = ref.kind === "github" ? (SETTINGS.ghToken||"") : "";
   let S; try { S = await fetchRepositoryEvidence(ref, token); } catch(err){ S = { ok:false, errors:[err.message||String(err)] }; }
   if(S.ok){
+    if(S.dependencies && c.signals && c.signals.url===S.url && c.signals.dependencies){S.dependencies.review=c.signals.dependencies.review||{};S.dependencies.context=c.signals.dependencies.context||"";}
     c.signals = S; c.evidence = deriveEvidence(S); c.example = false;
     const d = draftAnswers(S); c.form.drafts = c.form.drafts || {};
     ["licensing","maintenance","resources"].forEach(k => { const cur = (c.form[k]||"").trim(); if(!cur || cur === c.form.drafts[k]) c.form[k] = d[k]; c.form.drafts[k] = d[k]; });
@@ -1365,16 +1411,79 @@ function caseMarkdown(c){
   L.push(`## Route and decision`, "", `Route: **${R.route === "light" ? "Light review" : R.route === "extended" ? "Extended review" : "Clarify scope"}**`, "");
   R.triggers.forEach(t => L.push(`- ${t.text}${t.refer ? " (refer: " + t.refer + ")" : ""}`)); if(!R.triggers.length) L.push("- No extended-review triggers.");
   L.push("", `Decision: ${DECISION[own.decision||"open"]}`, `Decision owner: ${own.owner||"—"}`, `Operational owner: ${own.operator||"—"}`, `Conditions: ${own.conditions||"—"}`, `Review: ${own.reviewDate||"—"}${own.reviewTrigger ? " · " + own.reviewTrigger : ""}`, "");
-  L.push(`## Researcher's answers`, ""); TEN.forEach(t => { L.push(`**${String(t.n).padStart(2,"0")} ${t.q}**`, "", tenAnswer(c,t) + (t.auto && c.form.drafts && c.form.drafts[t.key] && c.form[t.key] === c.form.drafts[t.key] ? " _(drafted from repository signals, unedited)_" : ""), ""); });
-  if(S && S.ok){ L.push(`## Repository evidence snapshot`, "", `Fetched ${fmtDate(S.fetchedAt)} from ${S.source}.${S.scorecard ? ` OpenSSF Scorecard ${S.scorecard.score != null ? S.scorecard.score.toFixed(1) : "—"}/10 (${fmtDate(S.scorecard.date)}).` : ""}`, ""); evidenceSnapshotRows(S).forEach(([k,v]) => L.push(`- ${k}: ${v}`)); if(S.errors.length) L.push(`- Not retrieved: ${S.errors.join("; ")}`); L.push(""); }
-  L.push(`## Procurement review`, "", `| Area | Mark | Notes and signals |`, `|---|---|---|`);
-  activeAreas(c).forEach(a => { const ans = c.answers[a.id]||{}; const sp = areaSpecialist(a, c); const sum = areaSignalSummary(a, c); L.push(`| ${a.name}${sp ? " (→ " + sp + ")" : ""} | ${ans.verdict ? AREA_VLABEL[ans.verdict] : "open"} | ${[ans.note, sum ? `${sum.count} signals: ${sum.ok} positive${sum.mixed ? ", " + sum.mixed + " to check" : ""}${sum.bad ? ", " + sum.bad + " missing or negative" : ""}` : ""].filter(Boolean).join(" — ").replace(/\|/g,"\\|").replace(/\n/g," ")} |`); });
+  L.push(`## Request and supporting information`, ""); TEN.filter(t => t.n !== 4).forEach(t => { L.push(`**${String(t.n > 4 ? t.n-1 : t.n).padStart(2,"0")} ${t.q}**`, "", tenAnswer(c,t) + (t.auto && c.form.drafts && c.form.drafts[t.key] && c.form[t.key] === c.form.drafts[t.key] ? " _(drafted from repository signals, unedited)_" : ""), ""); });
+  if(S && S.ok){ L.push(`Evidence labels: Information retrieved means source information, not verified suitability. Needs review means illustrative, incomplete or uncertain. No information available does not establish absence.`, ""); L.push(`## Dependency evidence`, "", dependencyText(S), ""); L.push(`## Repository evidence snapshot`, "", `Fetched ${fmtDate(S.fetchedAt)} from ${S.source}.${S.scorecard ? ` OpenSSF Scorecard ${S.scorecard.score != null ? S.scorecard.score.toFixed(1) : "—"}/10 (${fmtDate(S.scorecard.date)}).` : ""}`, ""); evidenceSnapshotRows(S).forEach(([k,v]) => L.push(`- ${k}: ${v}`)); if(S.errors.length) L.push(`- Not retrieved: ${S.errors.join("; ")}`); L.push(""); }
+  L.push(`## Institutional review`, "", `| Area | Mark | Notes and signals |`, `|---|---|---|`);
+  activeAreas(c).forEach(a => { const ans = c.answers[a.id]||{}; const sp = areaSpecialist(a, c); const sum = areaSignalSummary(a, c); L.push(`| ${a.name}${sp ? " (→ " + sp + ")" : ""} | ${ans.verdict ? AREA_VLABEL[ans.verdict] : "open"} | ${[evidenceLabel(areaEvidence(a,c),S), ans.note, sum ? `${sum.count} signals: ${sum.ok} positive${sum.mixed ? ", " + sum.mixed + " to check" : ""}${sum.bad ? ", " + sum.bad + " missing or negative" : ""}` : ""].filter(Boolean).join(" — ").replace(/\|/g,"\\|").replace(/\n/g," ")} |`); });
   if(inactiveAreas(c).length) L.push("", `Not triggered: ${inactiveAreas(c).map(a => a.name).join(", ")}.`);
   L.push("");
   if(S && S.ok && c.upstream && c.upstream.selected && c.upstream.selected.length){ L.push(`## Feedback to the project${c.upstream.sent ? " (sent)" : " (drafted)"}`, ""); detectGaps(S).filter(g => c.upstream.selected.includes(g.id)).forEach(g => L.push(`- **${g.title}.** ${g.ask}`)); L.push(""); }
   L.push(`---`, `Question set aligned across HEOSAT, CHAOSS, OpenSSF, OSOR, IDB, HECVAT, OpenChain, OSBA and open hardware sources. Crosswalk: ${CROSSWALK_URL}`);
   return L.join("\n");
 }
+
+// Evidence helpers: facts are separate from institutional decisions.
+function licenseClass(id){
+  if(!id || id === "NOASSERTION" || id === "unrecognized") return "Unidentified: custom, modified or undetected terms; reviewer must inspect";
+  if(/\s(?:AND|OR|WITH)\s|[()]/.test(id)) return "Multiple licenses / exception: reviewer must inspect the expression";
+  if(/^LicenseRef-/.test(id)) return "Custom / non-standard identifier: read the supplied terms";
+  if(/^(AGPL)-/.test(id)) return "Network copyleft";
+  if(/^(GPL|EUPL|CECILL)-/.test(id) || id === "CERN-OHL-S-2.0") return "Strong copyleft / reciprocal";
+  if(/^(LGPL|MPL|EPL|CDDL|MS-RL)-/.test(id) || id === "CERN-OHL-W-2.0") return "Limited copyleft / reciprocal";
+  if(["MIT","Apache-2.0","BSD-2-Clause","BSD-3-Clause","ISC","0BSD","Zlib","BSL-1.0","Unlicense","CC0-1.0","UPL-1.0","NCSA","PostgreSQL","CERN-OHL-P-2.0"].includes(id)) return "Permissive / no copyleft";
+  return "Not classified by this tool; not necessarily custom";
+}
+function autoPanel(c,key){
+  const txt = c.signals && c.signals.ok ? (c.form[key] || draftAnswers(c.signals)[key]) : "Repository evidence unavailable. Add a repository URL and select Read repository. The reviewer follows up on missing evidence.";
+  return `<div class="banner info"><b>${evidenceLabel(c.evidence && Object.values(c.evidence).flatMap(e=>e.items||[]) || [],c.signals)}</b><p class="hint">${c.signals?.example?"Illustrative example; not retrieved live.":c.signals?.ok?"Retrieved " + h(fmtDate(c.signals.fetchedAt)) + " from " + h(c.signals.source):"You can continue without a repository."} Repository observations need human interpretation.</p><p>${h(txt)}</p></div>`;
+}
+function licensePanel(S){
+  const L = S && S.ok && S.license || {};
+  return `<p><b>${h(L.spdx || "License not identified")}</b> · ${h(licenseClass(L.spdx))}${L.url ? ` · <a href="${h(L.url)}" target="_blank" rel="noopener">Read license text</a>` : ""}</p><details><summary>Plain-language guide for the reviewer</summary><p>Permissions: what may be used, changed or shared. Conditions: notices, source disclosure or reciprocal licensing that may apply. Limitations: warranty, liability, patent and trademark provisions to inspect.</p><p>Copyleft is a type of obligation, not an automatic reason to reject a project. A machine-unrecognized license is not proof of custom terms. Review the actual text and intended use, including dependency licenses and any separate service contract.</p><a href="https://choosealicense.com/appendix/" target="_blank" rel="noopener">License permissions, conditions and limitations reference</a></details>`;
+}
+function normalizeDependencies(result,url){
+  const b = result && result.sbom;
+  if(!b || !Array.isArray(b.packages)) return {status:"unavailable", source:url+"/network/dependencies", packages:[], edges:[]};
+  return {status:"retrieved",source:url+"/network/dependencies",created:b.creationInfo && b.creationInfo.created,
+    packages:b.packages.map(p=>({id:p.SPDXID,name:p.name,version:p.versionInfo||"",license:p.licenseConcluded && p.licenseConcluded!=="NOASSERTION" ? p.licenseConcluded : p.licenseDeclared||"NOASSERTION"})),
+    edges:(b.relationships||[]).filter(r=>["DEPENDS_ON","DEPENDENCY_OF"].includes(r.relationshipType)).map(r=>r.relationshipType==="DEPENDS_ON"?{from:r.spdxElementId,to:r.relatedSpdxElement}:{from:r.relatedSpdxElement,to:r.spdxElementId})};
+}
+function dependencyText(S){
+  const d=S.dependencies;
+  if(!d || d.status!=="retrieved") return "Dependency graph unavailable; no conclusion about dependency absence or license compatibility.";
+  return `GitHub SBOM: ${d.packages.length} packages, ${d.edges.length} reported relationships. Snapshot: ${d.created||"not supplied"}. Source: ${d.source}\n`+d.packages.map(p=>`${p.name} ${p.version}: used by ${dependentCount(d,p.id)} components; critical: ${d.review?.[p.id]?.critical||"Not assessed"}; role/impact: ${d.review?.[p.id]?.note||"Not recorded"}; license: ${p.license} (${licenseClass(p.license)})`).join("\n")+`\nOther critical software/services: ${d.context||"Not recorded"}`;
+}
+function dependencyPanel(S){
+  const d=S && S.dependencies;
+  if(!d || d.status!=="retrieved") return `<section class="card"><h3>Dependency graph</h3><p>Dependency data ${S && S.example ? "is not part of this illustrative snapshot. Read the repository live" : "could not be retrieved"}. This does not mean there are no dependencies.</p>${d ? `<a href="${h(d.source)}" target="_blank" rel="noopener">Inspect GitHub dependency evidence</a>` : ""}<p class="hint">GitHub only. Access permissions, rate limits or disabled dependency analysis can prevent retrieval.</p></section>`;
+  const nodes=d.packages, lookup=new Map(nodes.map(p=>[p.id,p]));
+  const choices=nodes.filter(p=>d.edges.some(e=>e.from===p.id));
+  const root=choices.find(p=>p.id==="SPDXRef-Repository") || choices[0];
+  return `<section class="card"><h3>Dependency graph</h3><p class="hint">GitHub SBOM · ${h(d.created||"date not supplied")} · ${nodes.length} packages · ${d.edges.length} reported edges. Select a component to see which software it relies on. Dependent counts show structural importance; your team identifies what is critical to the intended use. Coverage depends on GitHub analysis and may omit services, plugins or system software.</p><label class="field">Component<select id="depRoot">${choices.map(p=>`<option value="${h(p.id)}" ${p===root?"selected":""}>${h(p.name)}</option>`).join("")}</select></label><div id="depGraph">${graphFor(d,root && root.id)}</div><details open><summary>Software components, criticality and licenses</summary><div style="overflow:auto"><table><thead><tr><th>Component</th><th>Version</th><th>Used by</th><th>Critical for this use?</th><th>Role / failure impact</th><th>License</th><th>Classification</th></tr></thead><tbody>${nodes.map(p=>`<tr><td>${h(p.name)}</td><td>${h(p.version)}</td><td>${dependentCount(d,p.id)} components</td><td><select aria-label="Criticality of ${h(p.name)}" data-dep-critical="${h(p.id)}">${[["","Not assessed"],["yes","Yes"],["no","No"]].map(([v,l])=>`<option value="${v}" ${(d.review?.[p.id]?.critical||"")===v?"selected":""}>${l}</option>`).join("")}</select></td><td><input aria-label="Role and failure impact of ${h(p.name)}" data-dep-note="${h(p.id)}" value="${h(d.review?.[p.id]?.note||"")}" placeholder="e.g. database; analysis stops without it"></td><td>${/^[A-Za-z0-9.-]+$/.test(p.license)&&p.license!=="NOASSERTION"&&!p.license.startsWith("LicenseRef-")?`<a href="https://spdx.org/licenses/${encodeURIComponent(p.license)}.html" target="_blank" rel="noopener">${h(p.license)}</a>`:h(p.license)}</td><td>${h(licenseClass(p.license))}</td></tr>`).join("")}</tbody></table></div></details><label class="field">Other critical software or services missing from this graph<textarea data-dep-context placeholder="Name, role, version if known, and what happens if unavailable">${h(d.context||"")}</textarea><span class="hint">For example: database server, operating system, external API, hardware driver or manually installed plugin. These notes do not create inferred SBOM edges.</span></label><a href="${h(d.source)}" target="_blank" rel="noopener">Source on GitHub</a></section>`;
+}
+function dependentCount(d,id){
+  const found=new Set(), queue=[id];
+  while(queue.length){const current=queue.shift();for(const edge of d.edges){if(edge.to===current && edge.from!==id && !found.has(edge.from)){found.add(edge.from);queue.push(edge.from);}}}
+  return found.size;
+}
+function saveDependencyInput(e){
+  const t=e.target, d=CASE && CASE.signals && CASE.signals.dependencies;if(!d)return;
+  const id=t.dataset.depCritical || t.dataset.depNote;
+  if(id){d.review=d.review||{};d.review[id]=d.review[id]||{};if(t.dataset.depCritical!==undefined)d.review[id].critical=t.value;else d.review[id].note=t.value;}
+  else if(t.hasAttribute("data-dep-context"))d.context=t.value;else return;
+  persist(CASE);
+  if(t.dataset.depCritical!==undefined){const select=document.getElementById("depRoot"),graph=document.getElementById("depGraph");if(select&&graph)graph.innerHTML=graphFor(d,select.value);}
+}
+document.addEventListener("input",saveDependencyInput);
+document.addEventListener("change",saveDependencyInput);
+function graphFor(d,id){
+  const source=d.packages.find(p=>p.id===id);
+  if(!source) return "<p>No dependency relationships reported. Inspect the component list; absence of edges is not proof of no dependencies.</p>";
+  const targets=d.edges.filter(e=>e.from===id).map(e=>d.packages.find(p=>p.id===e.to)).filter(Boolean);
+  const shown=targets.slice(0,24), height=Math.max(100,shown.length*62);
+  return `<p>${h(source.name)} depends on ${targets.length} reported components${targets.length>24?" (first 24 shown; all components are in the table)":""}.</p><div style="overflow:auto"><svg viewBox="0 0 800 ${height}" style="width:100%;min-width:560px" role="img" aria-label="Dependencies of ${h(source.name)}"><rect x="5" y="${height/2-24}" width="265" height="48" rx="8" fill="#e6eeee"/><text x="15" y="${height/2+4}" font-size="13">${h(source.name.slice(0,33))}</text>${shown.map((p,i)=>`<path d="M270 ${height/2} L330 ${i*62+28} L355 ${i*62+28}" fill="none" stroke="#63827c"/><rect x="355" y="${i*62+5}" width="435" height="48" rx="8" fill="#f2f5f4"/><text x="365" y="${i*62+24}" font-size="13">${h(p.name.slice(0,52))}</text><text x="365" y="${i*62+42}" font-size="11">${h(((p.version||"Version unspecified")+" · "+(d.review?.[p.id]?.critical==="yes"?"CRITICAL FOR THIS USE":"Criticality not confirmed")).slice(0,68))}</text>`).join("")}</svg></div>`;
+}
+document.addEventListener("change", e=>{if(e.target.id==="depRoot" && CASE && CASE.signals) document.getElementById("depGraph").innerHTML=graphFor(CASE.signals.dependencies,e.target.value);});
 
 route();
 </script></body></html>
