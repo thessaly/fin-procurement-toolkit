@@ -796,7 +796,7 @@ function computeRoute(c, S, answers){
   return { route, triggers: t };
 }
 // ---------- The ten researcher questions (the portal's instrument) ----------
-const SUPPORT = [["none","No purchase / assistance identifying options"],["maintenance","Maintenance or support"],["hosting","External hosting / service"],["development","Development / modification"],["equipment","Physical equipment / fabrication"],["funding","Upstream funding"],["training","Training / implementation"]];
+const SUPPORT = [["none","No purchase / assistance identifying options"],["maintenance","Maintenance or support"],["hosting","External hosting / service"],["development","Development / modification"],["equipment","Physical equipment / fabrication"],["funding","Fund an ongoing open-source project"],["training","Training / implementation"]];
 const DATA_OPTS = [["public","Public / non-sensitive"],["internal","Internal / confidential"],["personal","Personal or sensitive"],["regulated","Regulated (health, student records, export-controlled)"]];
 const SYSTEMS_OPTS = [["local","Local team use"],["shared","Shared or departmental service"],["institutional","Institution-wide or externally hosted"]];
 const IMPACT_OPTS = [["low","Low: work can continue with an easy workaround"],["moderate","Moderate: delays or repeat work"],["high","High: essential service, major loss or safety consequences"]];
@@ -808,7 +808,7 @@ const TEN = [
   { n:2, key:"rationale",  q:"How will you use it, and why choose open source?", label:"Intended use, research fit and alternatives", hint:"Describe who will use it, what it must work with, and why open source fits. Include alternatives and any existing open-source tools. For hardware, mention fabrication or calibration.", xw:["Q01","Q38","Q39"] },
   { n:3, key:"candidate",  q:"What software or hardware are you considering?", xw:["Q02","Q37"] },
   { n:4, key:"use",        q:"What is the intended use?", label:"Use and operating context", hint:"Who will use it? What must it work with? For hardware, describe fabrication, calibration, repair or physical use. Mention existing open-source tools where relevant.", xw:["Q34","Q35","Q36","Q37","Q57"] },
-  { n:5, key:"support",    q:"What help do you need from your institution?", hint:"Select the practical help you need. For example: pay a provider to maintain the tool; host it on institutional servers; pay for modifications; or purchase fabrication. Choose no purchase if you only need advice.", xw:["Q02","Q26","Q41","Q48","Q53","Q54","Q55","Q61"] },
+  { n:5, key:"support",    q:"What help do you need from your institution?", hint:"Select the practical help you need. For example: pay a provider to maintain the tool; host it on institutional servers; pay for modifications; purchase fabrication; or contribute funding to an ongoing project, even when it is free to use. Choose no purchase if you only need advice.", xw:["Q02","Q26","Q41","Q48","Q53","Q54","Q55","Q61"] },
   { n:6, key:"exposure",   q:"What are the potential consequences of failure or misuse?", xw:["Q31","Q33","Q52","Q58"] },
   { n:7, key:"licensing",  q:"What does the license say?", label:"License, design rights and known obligations", hint:"Identify the license and permission to use, modify, distribute or fabricate. Include dependency obligations. Unknown is acceptable and creates a follow-up.", xw:["Q03","Q04","Q05","Q06","Q07","Q53"], auto:true },
   { n:8, key:"maintenance",q:"What does the repository show about maintenance?", label:"Available support and continuity", hint:"Name actual maintainer / supplier availability and your team's capacity. Explain what happens if support or funding stops.", xw:["Q08","Q10","Q14","Q16","Q23","Q24","Q25","Q26","Q27","Q43","Q44","Q45","Q46","Q47"], auto:true },
@@ -823,7 +823,7 @@ function formToContext(f){
   const sup = new Set(f.support||[]);
   return {
     kind: f.type === "both" ? "both" : f.type === "hardware" ? "hardware" : "software",
-    activity: sup.has("development") ? "commissioned" : (sup.has("maintenance") || sup.has("hosting") || sup.has("training") || sup.has("funding")) ? "services" : "reuse",
+    activity: sup.has("development") ? "commissioned" : (sup.has("maintenance") || sup.has("hosting") || sup.has("training")) ? "services" : sup.has("funding") ? "funding" : "reuse",
     sensitiveData: f.data && f.data !== "public",
     externalService: f.systems === "institutional" || sup.has("hosting"),
     materialDependency: f.impact === "high",
@@ -885,7 +885,9 @@ const AREAS = [
     check:"Personal or sensitive data is identified, the processing and any provider access are documented, and the data protection process has been engaged.", specialist:() => "privacy / data protection" },
   { id:"accessibility", name:"Accessibility", when:(x,f) => f.systems !== "local", from:[4,6], xw:["Q33"],
     check:"Users beyond the research team can use the interface; accessibility evidence or a roadmap exists.", specialist:() => "accessibility" },
-  { id:"provider", name:"Provider and contract", when:(x,f) => (f.support||[]).some(k => ["maintenance","hosting","development","training","funding"].includes(k)), from:[5], xw:["Q26","Q41","Q52","Q54","Q55","Q56","Q61"],
+  { id:"funding", name:"Project funding contribution", when:(x,f) => (f.support||[]).includes("funding"), from:[5], xw:["Q44","Q55","Q61"],
+    check:"Confirm the recipient or fiscal host, amount and period, the project’s value to the institution, and whether funding is unrestricted or for a stated purpose. Agree proportionate reporting and identify the appropriate institutional funding route. Do not assume a software licence, service-level agreement or commissioned deliverable is being purchased.", specialist:() => "finance / research support" },
+  { id:"provider", name:"Provider and contract", when:(x,f) => (f.support||[]).some(k => ["maintenance","hosting","development","training"].includes(k)), from:[5], xw:["Q26","Q41","Q52","Q54","Q55","Q56","Q61"],
     check:"There is a signable counterparty with source-level capability, the scope of support and system access is defined, and contract terms (indemnity, liability, IP, warranty) do not block the case.", specialist:() => "contracts / legal" },
   { id:"hardware", name:"Hardware fabrication, acceptance and safety", when:(x,f) => x.hardwareWork || x.clinical || x.clinicalUnknown && x.hardwareWork, from:[3,4,5,6], xw:["Q57","Q58","Q59","Q60"],
     check:"The device can be specified, fabricated and accepted; physical safety and any clinical authorisation have a named reviewer; institutional mechanisms and the TTO allow the procurement.",
@@ -1041,8 +1043,8 @@ function viewHome(){
     <p class="eyebrow">Fostering Innovation Network · prototype</p>
     <h1>Request institutional support for open source</h1>
     <p class="muted lead">Use this toolkit when you need your institution to fund, buy or organise support for open-source software or hardware. It helps you describe the request and helps staff decide what needs checking.</p>
-    <p>For example: pay a provider to host a shared research service, commission improvements to a tool, fund maintenance of an in-house project, or buy equipment built from open designs.</p>
-    <details><summary>Do I need this to use free software?</summary><p>Simply installing Jupyter on your laptop is not a purchase. This pathway is for a specific request for institutional support or spending. Any local IT or data policies still apply.</p></details>
+    <p>For example: pay a provider to host a shared research service, commission improvements to a tool, fund maintenance of an in-house project, contribute to the maintenance or further development of a project you already use for free, or buy equipment built from open designs.</p>
+    <details><summary>Do I need this to use free software?</summary><p>Simply installing Jupyter on your laptop is not a purchase. This pathway is for a specific request for institutional support or spending. You can also request funding to sustain a project you already use for free, without buying a licence or a service. Any local IT or data policies still apply.</p></details>
     <div class="roles">
       <a class="role" href="#home" data-act="new-request"><span class="eyebrow">Researcher, librarian or other requester</span><b>Start my request</b><span class="small muted">Describe what you need, who would provide it and what support you are asking for. A project link is optional.</span></a>
       <a class="role" href="#home" data-act="role-reviewer"><span class="eyebrow">Procurement, IT, library or research support staff</span><b>${CASE && !CASE.example ? "Review this request" : "Explore an example review"}</b><span class="small muted">Check the request and its sources, identify follow-ups and record a decision. Specialist colleagues can review the relevant areas.</span></a>
@@ -1115,8 +1117,8 @@ function viewForm(c){
         <label class="field urlfield">Project / design URL, if available<div class="row"><input type="url" data-f="repoUrl" id="repoUrlField" value="${h(f.repoUrl)}" placeholder="https://github.com/org/project">${HOSTED ? "" : `<button type="button" class="btn small" data-act="fetch" id="fetchBtn">${S && S.ok ? "Re-read" : "Read repository"}</button>`}</div><span class="hint">A GitHub, GitLab or Codeberg link lets the toolkit draft the licensing, maintenance and resources answers.</span></label>
       </div>`)}
     ${card(TEN[4], `<p class="small muted">${h(TEN[4].hint)}</p><div class="checks">${SUPPORT.map(([k,v]) => `<label class="check"><input type="checkbox" data-fs="${k}" ${(f.support||[]).includes(k)?"checked":""}><span>${v}</span></label>`).join("")}</div>
-      <label class="field">What exactly should the institution fund or organise?<textarea data-f="deliverable" placeholder="Work to be delivered, users, period and expected result">${h(f.deliverable||"")}</textarea></label>
-      <label class="field">Who would provide it?<input data-f="provider" value="${h(f.provider||"")}" placeholder="Supplier, internal team, project organisation, or Unknown"><span class="hint">The open-source project and the paid provider may be different organisations.</span></label>
+      <label class="field">What exactly should the institution fund or organise?<textarea data-f="deliverable" placeholder="Work or funding purpose, beneficiaries, period and expected benefit">${h(f.deliverable||"")}</textarea><span class="hint">For project funding, explain why your team relies on the project and whether the contribution supports general maintenance or a specific development goal. A general contribution need not purchase a service or promise a specific deliverable. Example: €5,000 for one year of maintenance of an analysis tool our group uses for free; recipient to be confirmed.</span></label>
+      <label class="field">Who would provide the work or receive the funding?<input data-f="provider" value="${h(f.provider||"")}" placeholder="Supplier, internal team, project organisation / fiscal host, or Unknown"><span class="hint">For a funding contribution, name the recipient (project organisation, foundation or fiscal host), if known. The project and the organisation receiving payment may differ.</span></label>
       <label class="field">Estimated budget, staff time and period<textarea data-f="budget" placeholder="Include recurring costs, setup and exit, or say Unknown">${h(f.budget||"")}</textarea></label>`)}
     ${card(TEN[5], `<p class="hint">Describe the situation; you do not need to judge legal risk. Personal data → privacy review; external hosting → IT/security review; possible injury or clinical use → safety review. License and contract questions go to legal/procurement.</p><div class="grid2">
         <label class="field">Data<select data-f="data">${DATA_OPTS.map(([k,v]) => `<option value="${k}" ${f.data===k?"selected":""}>${v}</option>`).join("")}</select></label>
@@ -1239,7 +1241,7 @@ function tenAnswer(c, t){
   if(t.key === "rationale") return [f.rationale, f.use].filter(Boolean).join("\n\n") || "—";
   if(t.key === "resources") return `Local testing: ${f.localTested || "Not answered"}. ${f.testNotes || ""}\nRepository evidence: ${f.resources || "Not retrieved"}`;
   if(t.key === "candidate") return `${f.candidate || "—"} · ${label(TYPE_OPTS, f.type)}${f.version ? " · " + f.version : ""}${f.repoUrl ? " · " + f.repoUrl : ""}`;
-  if(t.key === "support") return [(f.support||[]).map(k => label(SUPPORT,k)).join("; "), "Requested work: " + (f.deliverable||"Unknown"), "Provider / responsible team: " + (f.provider||"Unknown"), "Budget and period: " + (f.budget||"Unknown")].join("\n");
+  if(t.key === "support") return [(f.support||[]).map(k => label(SUPPORT,k)).join("; "), "Requested work / funding purpose: " + (f.deliverable||"Unknown"), "Provider / funding recipient: " + (f.provider||"Unknown"), "Budget and period: " + (f.budget||"Unknown")].join("\n");
   if(t.key === "exposure") return `Data: ${label(DATA_OPTS,f.data)} · Systems: ${label(SYSTEMS_OPTS,f.systems)} · Impact of failure: ${label(IMPACT_OPTS,f.impact)} · Clinical / safety-critical: ${label(CLINICAL_OPTS,f.clinical)}`;
   return f[t.key] || "—";
 }
