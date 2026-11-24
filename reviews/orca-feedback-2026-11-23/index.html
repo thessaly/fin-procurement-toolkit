@@ -1544,9 +1544,36 @@ function viewAbout(){
       <div><h4>Institutional staff</h4><p class="small muted">Procurement, IT, library or research support staff. Open the request file, review the areas that apply, involve specialist colleagues where needed and record the decision and its owner.</p></div></div></section>
     <section class="card stack"><p class="eyebrow">The pathway</p><h3>Four stages</h3><ol class="small muted" style="margin:0;padding-left:18px">${STAGES.map(s => `<li><b>${h(s.name)}</b> (${h(s.owner.toLowerCase())}). ${h(s.blurb)}</li>`).join("")}</ol></section>
   </div>
-  <section class="card stack"><p class="eyebrow">Proportionate review</p><h3>Start light and expand only when needed</h3>
-    <div class="grid2"><div><h4>Lighter review</h4><p class="small muted">Suggested when nothing in the request or the project information calls for more.</p></div>
-    <div><h4>Extended review</h4><p class="small muted">Suggested when sensitive data, an essential shared service, a material dependency, physical hardware or a concern in the project information is involved. The toolkit names the specialist process to involve.</p></div></div></section>
+  <section class="card stack"><h3>How the toolkit decides</h3><p class="small muted">The toolkit suggests; people decide. Every rule it applies is listed here.</p>
+    <details class="src"><summary>Which review is suggested</summary><div class="stack small" style="padding-top:8px">
+      <p><b>Extended review</b> if any one of these is true. Otherwise a <b>lighter review</b>.</p>
+      <p>From the request:</p><ul style="margin:0;padding-left:18px"><li>Data is not public</li><li>Institution-wide or externally hosted systems, or external hosting requested</li><li>High impact of failure</li><li>Clinical or safety-critical use</li><li>Physical hardware</li></ul>
+      <p>From the project's repository:</p><ul style="margin:0;padding-left:18px"><li>No license, or one that is not recognised or not on the OSI list</li><li>Repository archived, or no activity for over a year</li><li>No security policy file</li><li>Known vulnerabilities (OpenSSF Scorecard "Vulnerabilities" below 7)</li><li>One person wrote more than 80% of a project with fewer than ten contributors</li></ul>
+      <p><b>Scope needs clarifying first</b> when development or modification work is requested.</p>
+      <p>Not knowing whether the use is clinical adds a follow-up, not an extended review.</p></div></details>
+    <details class="src"><summary>Which staff review areas apply</summary><div class="stack small" style="padding-top:8px">
+      <p>Always: ${AREAS.filter(a => !a.when).map(a => h(a.name)).join(", ")}.</p>
+      <ul style="margin:0;padding-left:18px">${AREAS.filter(a => a.when).map(a => `<li><b>${h(a.name)}</b>: ${h((a.why||"").replace(/^Applies because /,"").replace(/\.$/,""))}</li>`).join("")}</ul></div></details>
+    <details class="src"><summary>The six project checks</summary><div class="tablewrap" style="padding-top:8px"><table>
+      <tr><th>Check</th><th>Green</th><th>Amber</th><th>Red</th></tr>
+      <tr><td>License</td><td>OSI-approved or open hardware</td><td>Other or not recognised</td><td>None found</td></tr>
+      <tr><td>Activity</td><td>Change in the last 180 days</td><td>180 to 365 days</td><td>Over a year, or archived</td></tr>
+      <tr><td>Maintainers</td><td>Top contributor up to 50% of commits</td><td>50% to 80%</td><td>Over 80%</td></tr>
+      <tr><td>Security</td><td>Security policy present</td><td>No policy</td><td>Known vulnerabilities</td></tr>
+      <tr><td>Documentation</td><td>3 or 4 of README, contribution guide, code of conduct, docs folder</td><td>1 or 2</td><td>None</td></tr>
+      <tr><td>OpenSSF Scorecard</td><td>7 or more out of 10</td><td>4 to 6.9</td><td>Below 4</td></tr>
+    </table><p class="small muted" style="padding-top:6px">Grey means no information. Where contributor counts are unavailable, maintainers are judged on authors active in the last 90 days: three or more is green, one or two amber.</p></div></details>
+    <details class="src"><summary>The traffic lights</summary><div class="stack small" style="padding-top:8px">
+      <ul style="margin:0;padding-left:18px"><li><b>Mostly positive</b> (green): at least three quarters of the rated signals are positive</li><li><b>Mostly gaps</b> (red): more than half are missing or negative</li><li><b>Mixed</b> (amber): everything in between</li><li>Grey: no repository signal, or not a repository question</li></ul>
+      <p>The overall light counts the six checks above. Each staff review area counts the repository signals that belong to it.</p></div></details>
+    <details class="src"><summary>The evidence labels</summary><div class="stack small" style="padding-top:8px">
+      <ul style="margin:0;padding-left:18px"><li><b>Information retrieved</b>: signals were found and none is negative or uncertain. Not verified.</li><li><b>Needs review</b>: a signal is negative or uncertain, a call failed, or the data is an example.</li><li><b>No information available</b>: nothing was found. Not proof of absence.</li><li><b>Not a repository question</b>: the area depends on the request and the institution.</li></ul></div></details>
+    <details class="src"><summary>What is flagged to the developer team</summary><div class="stack small" style="padding-top:8px">
+      <p>The drafted note lists whichever of these the repository lacks:</p>
+      <ul style="margin:0;padding-left:18px;columns:2"><li>License</li><li>Security policy</li><li>Governance or maintainers document</li><li>A way to fund or buy support</li><li>Documented support options</li><li>Contribution guide</li><li>Code of conduct</li><li>README</li><li>Citation metadata</li><li>Tagged releases</li><li>Changelog</li><li>Continuous integration</li><li>Automated dependency updates</li><li>Signed releases</li><li>Branch protection</li><li>Pinned build dependencies</li><li>No known vulnerabilities</li></ul></div></details>
+    <details class="src"><summary>What people decide</summary><div class="stack small" style="padding-top:8px">
+      <p>Staff mark each area as sufficient, needs follow-up, refer to specialist or not applicable, and record the decision, its owner and any conditions. The toolkit never approves or rejects a request.</p></div></details>
+  </section>
   <section class="card stack"><h3>Limits of this prototype</h3><ul class="small muted" style="margin:0;padding-left:18px"><li>It does not submit requests, grant permission or place orders.</li><li>Nothing is stored. Download the record, or save the request file to pass it on.</li><li>Project information read from a repository is a dated signal about one repository. It supports a review and does not replace one.</li><li>Contract language and checklists are not part of this version.</li></ul><p class="small muted">What is read from repositories, and from which services, is listed under <a href="#sources">Sources</a>.</p></section>`;
 }
 function viewSources(){
