@@ -307,6 +307,12 @@ textarea{min-height:96px}
 .autobox>b{font:700 18px/1.2 var(--display);letter-spacing:-.01em}
 .autobox ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:6px 18px;font-size:14.5px}
 .autobox li{display:flex;gap:8px;align-items:baseline} .autobox li::before{content:"✓";font-weight:700}
+.ampel{display:flex;align-items:center;gap:9px;flex-wrap:wrap;font-size:15.5px}
+.ampel i{flex:none;width:16px;height:16px;border-radius:50%;background:var(--line-strong);box-shadow:0 0 0 4px rgba(15,27,45,.06)}
+.ampel.ok i,.lights .ok i{background:#1f9d55} .ampel.warn i,.lights .warn i{background:#e3a008} .ampel.bad i,.lights .bad i{background:#d64533}
+.ampel b{font-weight:700}
+.lights{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:8px 20px;font-size:15px}
+.lights li{display:flex;gap:10px;align-items:center} .lights i{flex:none;width:11px;height:11px;border-radius:50%;background:var(--line-strong)}
 .autobox.slim{display:block;padding:10px 16px;font-size:14.5px;font-weight:500}
 .autobox.empty{background:var(--surface);border:1.5px dashed var(--line-strong);color:var(--fg)}
 .qcard{padding:30px 32px;gap:14px;border-radius:20px;border-color:transparent;box-shadow:0 1px 2px rgba(15,27,45,.05),0 18px 40px -24px rgba(15,27,45,.28)}
@@ -1007,7 +1013,37 @@ function areaEvidence(a, c){
 function areaSignalSummary(a, c){
   const items = areaEvidence(a, c); if(!items.length) return null;
   const n = { ok:0, bad:0, mixed:0 }; items.forEach(i => { if(i.ok === true) n.ok++; else if(i.ok === false) n.bad++; else if(i.ok === "mixed") n.mixed++; });
-  return { count: items.length, ok: n.ok, bad: n.bad, mixed: n.mixed, state: n.bad ? "bad" : n.mixed ? "warn" : n.ok ? "ok" : "none" };
+  const L = lightOf(n);
+  return { count: items.length, ok: n.ok, bad: n.bad, mixed: n.mixed, state: L.state, word: L.word };
+}
+// Traffic light for a set of rated signals. Proportional, so one gap among many positives is not red.
+// Green: at least three quarters of rated signals positive. Red: more than half missing or negative. Otherwise amber.
+function lightOf(n){
+  const rated = n.ok + n.bad + n.mixed; if(!rated) return { state:"none", word:"No signal" };
+  const state = n.ok / rated >= 0.75 ? "ok" : n.bad / rated > 0.5 ? "bad" : "warn";
+  return { state, word: state === "ok" ? "Looks good" : state === "warn" ? "Some points to check" : "Needs attention" };
+}
+function ampel(L, detail){ return `<p class="ampel ${L.state}"><i aria-hidden="true"></i><b>${h(L.word)}</b>${detail ? ` <span class="muted small">${h(detail)}</span>` : ""}</p>`; }
+function tilePlain(t){
+  const P = { "License":{ ok:"Has a recognised open license", warn:"License needs a closer look", bad:"No license found" },
+    "Activity":{ ok:"Actively maintained", warn:"Activity is slowing", bad:"No recent activity", none:"Activity unknown" },
+    "Maintainers":{ ok:"Work is shared among several people", warn:"Relies on a few people", bad:"Relies on one person", none:"Unknown" },
+    "Security":{ ok:"Has a way to report security problems", warn:"No way to report security problems", bad:"Has known security problems" },
+    "Documentation":{ ok:"Well documented", warn:"Partly documented", bad:"Little documentation" },
+    "OpenSSF Scorecard":{ ok:"Good score for security practices", warn:"Mixed score for security practices", bad:"Low score for security practices", none:"No security practices score" } };
+  return (P[t.label] && P[t.label][t.state]) || t.word;
+}
+function tilesLight(tiles){ const n = { ok:0, bad:0, mixed:0 }; tiles.forEach(t => { if(t.state === "ok") n.ok++; else if(t.state === "warn") n.mixed++; else if(t.state === "bad") n.bad++; }); return Object.assign(lightOf(n), { n, rated: n.ok+n.bad+n.mixed }); }
+function lightsList(tiles){ return `<ul class="lights">${tiles.map(t => `<li class="${t.state}"><i aria-hidden="true"></i><span>${h(tilePlain(t))}</span></li>`).join("")}</ul>`; }
+function glanceLine(c){ const S = c.signals; if(!S || !S.ok) return ""; const L = tilesLight(glanceTiles(S)); return ampel({ state:L.state, word:"Project: " + L.word.toLowerCase() }, `${L.n.ok} of ${L.rated} checks positive`); }
+function projectGlance(c, extra){
+  const S = c.signals; if(!S || !S.ok) return "";
+  const tiles = glanceTiles(S); const L = tilesLight(tiles);
+  return `<section class="card stack"><div class="row" style="justify-content:space-between"><h3>The project at a glance</h3>${ampel(L, `${L.n.ok} of ${L.rated} checks positive`)}</div>
+    ${lightsList(tiles)}
+    <p class="small muted">The lights describe what the project's repository shows. They are not an approval or a rejection.</p>
+    <details data-evkey="glance" ${c.ui.ev.glance ? "open" : ""}><summary>Learn more</summary><div class="stack" style="padding-top:10px">${evidenceLegend()}<section class="glance">${tiles.map(t => `<div class="tile ${t.state}"><span class="tl">${h(t.label)}</span><span class="tv">${h(t.value)}</span><span class="ts"><i></i>${h(t.word)}</span>${t.sub ? `<span class="tsub">${h(t.sub)}</span>` : ""}</div>`).join("")}</section><p class="small muted">${S.example ? "Illustrative snapshot" : "Read " + h(fmtDate(S.fetchedAt)) + " from " + h(S.source)}${S.scorecard ? ` and OpenSSF Scorecard` : ""}${S.errors.length ? `; ${S.errors.length} call${S.errors.length===1?"":"s"} failed (<a href="#form" data-act="showlog">log</a>)` : ""}.</p><div id="fetchLogBox" class="log" hidden>${h(S.errors.join("\n"))}</div>${extra || ""}</div></details>
+  </section>`;
 }
 // ---------- Example request: JupyterHub ----------
 // Illustrative snapshot of github.com/jupyterhub/jupyterhub for the demo roles. It is NOT a live reading:
@@ -1284,7 +1320,7 @@ function viewForm(c){
   const f = c.form, S = c.signals, E = c.evidence || {}; const x = ctxOf(c); const R = computeRoute(x, S, {});
   const card = (t, body) => `<section class="card qcard" id="q${t.n}" ${REQUEST_STEPS[c.ui.step||0].key===t.key?"":"hidden"}>${t.auto && c.signals && c.signals.ok ? `<p><span class="pill auto">Filled in for you</span></p>` : ""}<h3 tabindex="-1">${h(t.q)}</h3><p class="hint"><b>Why we ask:</b> ${h(WHY[t.key])}</p>${body}</section>`;
   const ta = (t, extra) => `<label class="field">${h(t.label)}${extra||""}<textarea data-f="${t.key}" rows="3">${h(f[t.key]||"")}</textarea><span class="hint">${h(t.hint)}</span></label>`;
-  const evFor = (t) => { const ids = t.xw.filter(id => E[id] && E[id].items && E[id].items.length); if(!ids.length) return ""; const items = []; const seen = new Set(); ids.forEach(id => E[id].items.forEach(it => { const k = it.label + it.value; if(it.src !== "toolkit" && !seen.has(k)){ seen.add(k); items.push(it); } })); return `<details class="evd" ${c.ui.ev[t.key] ? "open" : ""} data-evkey="${t.key}"><summary>Repository sources <span class="muted">(${items.length} signals)</span></summary><div class="ev">${items.map(it => `<div class="evi"><span class="dot ${it.ok===true?"ok":it.ok===false?"bad":it.ok==="mixed"?"mixed":""}"></span><span class="evl">${h(it.label)}</span><span class="evv">${it.link ? `<a href="${h(it.link)}" target="_blank" rel="noopener">${h(it.value)}</a>` : h(it.value)}</span><span class="evs">${h(it.src)} · ${signalWord(it)}</span></div>`).join("")}</div></details>`; };
+  const evFor = (t) => { const ids = t.xw.filter(id => E[id] && E[id].items && E[id].items.length); if(!ids.length) return ""; const items = []; const seen = new Set(); ids.forEach(id => E[id].items.forEach(it => { const k = it.label + it.value; if(it.src !== "toolkit" && !seen.has(k)){ seen.add(k); items.push(it); } })); return `<details class="evd" ${c.ui.ev[t.key] ? "open" : ""} data-evkey="${t.key}"><summary>Learn more: repository sources <span class="muted">(${items.length})</span></summary><div class="ev">${items.map(it => `<div class="evi"><span class="dot ${it.ok===true?"ok":it.ok===false?"bad":it.ok==="mixed"?"mixed":""}"></span><span class="evl">${h(it.label)}</span><span class="evv">${it.link ? `<a href="${h(it.link)}" target="_blank" rel="noopener">${h(it.value)}</a>` : h(it.value)}</span><span class="evs">${h(it.src)} · ${signalWord(it)}</span></div>`).join("")}</div></details>`; };
   const draftNote = (t) => f.drafts && f.drafts[t.key] ? (f[t.key] === f.drafts[t.key] ? `<span class="draft">Drafted from the repository on ${h(fmtDate(S && S.fetchedAt))}. Edit freely.</span>` : `<span class="draft">Edited. <a href="#form" data-act="redraft" data-key="${t.key}">Restore the repository draft</a></span>`) : "";
   return `
   <div class="formv">
@@ -1295,6 +1331,7 @@ function viewForm(c){
     ${stageStrip([1])}
     ${guide(c)}
     ${autoSummary(c)}
+    ${glanceLine(c)}
     ${S && S.ok === false ? `<div class="banner warn"><b>Could not read the repository.</b> ${h((S.errors||[]).join(" "))} Answer the questions by hand, or fix the link in question 3.</div>` : ""}
     ${f.repoUrl && HOSTED ? `<div class="banner info">This hosted copy cannot reach repository APIs, so nothing is drafted here. Open the toolkit from your own site to have licensing, maintenance and resources pre-filled.</div>` : ""}
 
@@ -1317,13 +1354,13 @@ function viewForm(c){
         <label class="field">Clinical / safety-critical<select data-f="clinical">${CLINICAL_OPTS.map(([k,v]) => `<option value="${k}" ${f.clinical===k?"selected":""}>${v}</option>`).join("")}</select></label>
       </div>
       <div id="routeBox">${routeBanner(R)}</div>`)}
-    ${card(TEN[6], `<p class="hint"><b>Nothing to answer here.</b> This is what the repository shows; staff check what it means.</p>` + licensePanel(S) + autoPanel(c,"licensing") + evFor(TEN[6]) + dependencyLink(S))}
+    ${card(TEN[6], `<p class="hint"><b>Nothing to answer here.</b> This is what the repository shows; staff check what it means.</p>` + autoPanel(c,"licensing", licensePanel(S) + dependencyLink(S)) + evFor(TEN[6]))}
     ${card(TEN[7], `<p class="hint"><b>Nothing to answer here.</b> This is what the repository shows; staff check what it means.</p>` + autoPanel(c,"maintenance") + `<p class="hint">Activity is not availability; staff confirm.</p>` + evFor(TEN[7]))}
-    ${card(TEN[8], `<p class="hint">Any earlier use by you or your team counts.</p><div class="checks">${["yes","no"].map(v => `<label class="check"><input type="radio" name="localTested" data-f="localTested" value="${v}" ${f.localTested===v?"checked":""}>${v==="yes"?"Yes":"No"}</label>`).join("")}</div><label class="field">Optional notes<textarea data-f="testNotes">${h(f.testNotes||"")}</textarea></label><p class="hint">From the repository:</p>` + autoPanel(c,"resources") + evFor(TEN[8]))}
+    ${card(TEN[8], `<p class="hint">Any earlier use by you or your team counts.</p><div class="checks">${["yes","no"].map(v => `<label class="check"><input type="radio" name="localTested" data-f="localTested" value="${v}" ${f.localTested===v?"checked":""}>${v==="yes"?"Yes":"No"}</label>`).join("")}</div><label class="field">Optional notes<textarea data-f="testNotes">${h(f.testNotes||"")}</textarea></label>` + autoPanel(c,"resources") + evFor(TEN[8]))}
     ${card(TEN[9], `<label class="field">${h(TEN[9].label)}<input type="text" data-f="contact" value="${h(f.contact)}" placeholder="Name or role, unit"><span class="hint">${h(TEN[9].hint)}</span></label>`)}
     ${card(UPSTREAM_STEP, renderUpstream(c, true))}
     <div class="row stepnav"><button class="btn" data-act="step-back" ${!(c.ui.step||0)?"disabled":""}>Previous</button>${(c.ui.step||0)<REQUEST_STEPS.length-1?`<button class="btn primary" data-act="step-next">Next step</button>`:`<a class="btn primary" href="#review">Continue to institutional review</a>`}</div>
-    ${S && S.ok ? `<details><summary>See what was read from the repository</summary>${evidenceLegend()}<section class="glance">${glanceTiles(S).map(t => `<div class="tile ${t.state}"><span class="tl">${h(t.label)}</span><span class="tv">${h(t.value)}</span><span class="ts"><i></i>${h(t.word)}</span>${t.sub ? `<span class="tsub">${h(t.sub)}</span>` : ""}</div>`).join("")}</section><p class="small muted">${S.example ? "Illustrative snapshot" : "Read " + h(fmtDate(S.fetchedAt)) + " from " + h(S.source)}${S.scorecard ? ` and OpenSSF Scorecard` : ""}${S.errors.length ? `; ${S.errors.length} call${S.errors.length===1?"":"s"} failed (<a href="#form" data-act="showlog">log</a>)` : ""}. Licensing, maintenance and resources below were drafted from these signals.</p><div id="fetchLogBox" class="log" hidden>${h(S.errors.join("\n"))}</div></details>` : ""}
+    ${projectGlance(c)}
     <div class="row formfoot" style="justify-content:space-between"><p>Nothing is stored. Save the request file and send it to staff.</p><div class="row"><button class="btn" data-act="export-json">Save request file for staff</button><a class="btn" href="#report">Review the record</a><button class="btn" data-act="export-md">Download Markdown</button></div></div>
   </div>`;
 }
@@ -1359,9 +1396,8 @@ function viewReview(c){
       <div class="stack" style="gap:4px;min-width:0"><p class="eyebrow">Institutional staff review</p><h1 style="font-size:clamp(22px,3vw,30px)">${h(caseTitle(c))}</h1><p class="muted small">${act.length} areas apply to this request. Mark each and note what was done.</p></div>
       <div class="row"><a class="btn small" href="#form">Request form</a><a class="btn small primary" href="#report">Record</a></div>
     </header>
-    ${exampleBanner(c, "reviewer")}${stageStrip([2,3,4])}${evidenceLegend()}
-    ${licensePanel(c.signals)}
-    ${dependencyLink(c.signals)}
+    ${exampleBanner(c, "reviewer")}${stageStrip([2,3,4])}
+    ${projectGlance(c, licensePanel(c.signals) + dependencyLink(c.signals))}
     <p class="small muted num" id="reviewProgress" aria-live="polite">${marked}/${act.length} areas marked</p>
     <div class="areas">${[2,3,4].map(n => { const list = act.filter(a => (a.stage||2) === n); return list.length ? `<h2 class="stageh">Stage ${n} · ${h(STAGES[n-1].name)}</h2>` + list.map(a => renderArea(c, a)).join("") : ""; }).join("")}</div>
     ${inact.length ? `<details class="small muted"><summary>Not triggered by this request: ${inact.map(a => h(a.name)).join(", ")}</summary><p style="padding-top:6px">These areas switch on when the answers change (for example data that is not public, a paid provider, shared systems, or physical hardware).</p></details>` : ""}
@@ -1397,17 +1433,19 @@ function renderUpstream(c, inForm){
 function researcherText(c, n){ const t = TEN[n===4?1:n-1]; return tenAnswer(c, t); }
 function renderArea(c, a){
   const ans = c.answers[a.id] || {}; const v = ans.verdict || ""; const sp = areaSpecialist(a, c); const sum = areaSignalSummary(a, c); const items = areaEvidence(a, c); const open = c.ui.open[a.id];
+  const fromNums = [...new Set(a.from.map(n=>n===4?2:n))]; const isDraft = (n) => { const t = TEN[n-1]; return !!(t && (t.key === "licensing" || t.key === "maintenance") && c.signals && c.signals.ok); };
+  const own = fromNums.filter(n => !isDraft(n)), drafted = fromNums.filter(isDraft); const rated = sum ? sum.ok + sum.mixed + sum.bad : 0;
   return `<article class="area ${v}" data-area="${a.id}">
     <div class="ahead">
       <div class="stack" style="gap:4px;min-width:0">
         <h3>${h(a.name)}${sp ? ` <span class="specialist">→ ${h(sp)}</span>` : ""}</h3>
-        <p class="small muted">${h(a.why || "Applies to every request.")}</p><p class="small">${h(a.check)}</p><p class="small"><b>${evidenceLabel(items,c.signals,areaRepoInformed(a))}</b>${c.signals?.ok ? " · " + (c.signals.example ? "Illustrative example" : "Retrieved " + h(fmtDate(c.signals.fetchedAt))) : ""}</p>
-        ${sum ? `<p class="small sig ${sum.state}"><i></i>${sum.count} repository signal${sum.count===1?"":"s"}: ${sum.ok} positive${sum.mixed ? `, ${sum.mixed} to check` : ""}${sum.bad ? `, ${sum.bad} missing or negative` : ""}</p>` : `<p class="small muted">${areaRepoInformed(a) ? "No repository signals for this area" : "A repository cannot answer this"}; rely on the requester's answer and your own checks.</p>`}
+        <p class="small muted">${h(a.why || "Applies to every request.")}</p><p class="small">${h(a.check)}</p>
+        ${sum ? ampel({ state:sum.state, word:sum.word }, rated ? `${sum.ok} of ${rated} repository signals positive` : `${sum.count} for information`) : `<p class="ampel none"><i aria-hidden="true"></i><b>${areaRepoInformed(a) ? "No repository signal" : "Not a repository question"}</b> <span class="muted small">Rely on the requester's answer and your own checks.</span></p>`}
       </div>
       <div class="seg">${AREA_VERDICTS.map(([k,l]) => `<label><input type="radio" name="a-${a.id}" value="${k}" data-area-verdict="${a.id}" ${v===k?"checked":""}>${l}</label>`).join("")}</div>
     </div>
-    <div class="ev"><div class="evi"><span class="dot ok"></span><span class="evl">Requester</span><span class="evv">${[...new Set(a.from.map(n=>n===4?2:n))].map(n => `<b>${String(n>4?n-1:n).padStart(2,"0")}</b> ${h(researcherText(c, n) || "—")}`).join("<br>")}</span></div></div>
-    ${items.length ? `<details class="evd" ${open ? "open" : ""} data-evkey="${a.id}"><summary>Repository sources <span class="muted">(${items.length})</span></summary><div class="ev">${items.map(it => `<div class="evi"><span class="dot ${it.ok===true?"ok":it.ok===false?"bad":it.ok==="mixed"?"mixed":""}"></span><span class="evl">${h(it.label)}</span><span class="evv">${it.link ? `<a href="${h(it.link)}" target="_blank" rel="noopener">${h(it.value)}</a>` : h(it.value)}</span><span class="evs">${h(it.src)} · ${signalWord(it)}</span></div>`).join("")}</div></details>` : ""}
+    ${own.length ? `<div class="ev"><div class="evi"><span class="evl">Requester</span><span class="evv">${own.map(n => h(researcherText(c, n) || "—")).join("<br>")}</span></div></div>` : ""}
+    ${items.length || drafted.length ? `<details class="evd" ${open ? "open" : ""} data-evkey="${a.id}"><summary>Learn more <span class="muted">(${items.length} repository signal${items.length===1?"":"s"})</span></summary><div class="stack" style="padding-top:8px"><p class="small muted"><b>${evidenceLabel(items,c.signals,areaRepoInformed(a))}</b>${c.signals?.ok ? " · " + (c.signals.example ? "Illustrative example" : "Retrieved " + h(fmtDate(c.signals.fetchedAt))) : ""}</p>${drafted.map(n => `<p class="small" style="white-space:pre-wrap">${h(researcherText(c, n) || "")}</p>`).join("")}<div class="ev">${items.map(it => `<div class="evi"><span class="dot ${it.ok===true?"ok":it.ok===false?"bad":it.ok==="mixed"?"mixed":""}"></span><span class="evl">${h(it.label)}</span><span class="evv">${it.link ? `<a href="${h(it.link)}" target="_blank" rel="noopener">${h(it.value)}</a>` : h(it.value)}</span><span class="evs">${h(it.src)} · ${signalWord(it)}</span></div>`).join("")}</div></div></details>` : ""}
     <label class="field">Notes <textarea data-area-note="${a.id}" placeholder="What was checked, by whom, and where it is documented">${h(ans.note||"")}</textarea></label>
     <details class="small"><summary class="muted">Crosswalk questions behind this area</summary><ul class="xwl">${a.xw.map(id => QBYID[id] ? `<li><span class="mono">${id}</span> ${h(QBYID[id].q)}</li>` : "").join("")}</ul></details>
   </article>`;
@@ -1646,9 +1684,13 @@ function licenseClass(id){
   if(["MIT","Apache-2.0","BSD-2-Clause","BSD-3-Clause","ISC","0BSD","Zlib","BSL-1.0","Unlicense","CC0-1.0","UPL-1.0","NCSA","PostgreSQL","CERN-OHL-P-2.0"].includes(id)) return "Permissive / no copyleft";
   return "Not classified by this tool; not necessarily custom";
 }
-function autoPanel(c,key){
-  const txt = c.signals && c.signals.ok ? (c.form[key] || draftAnswers(c.signals)[key]) : "Repository evidence unavailable. Add a repository URL and select Read repository. The reviewer follows up on missing evidence.";
-  return `<div class="banner info"><b>${evidenceLabel(((TEN.find(t=>t.key===key)||{}).xw||[]).flatMap(id => (c.evidence && c.evidence[id] && c.evidence[id].items || []).filter(i=>i.src!=="toolkit")),c.signals)}</b><p class="hint">${c.signals?.example?"Illustrative example; not retrieved live.":c.signals?.ok?"Retrieved " + h(fmtDate(c.signals.fetchedAt)) + " from " + h(c.signals.source):"You can continue without a repository."}</p><p>${h(txt)}</p></div>`;
+function autoPanel(c,key,extra){
+  const S = c.signals;
+  if(!S || !S.ok) return `<div class="banner"><p>No project link yet. Add one in step 3 and this part fills itself in.</p></div>`;
+  const map = { licensing:["License"], maintenance:["Activity","Maintainers"], resources:["Security","Documentation","OpenSSF Scorecard"] };
+  const tiles = glanceTiles(S).filter(t => (map[key]||[]).includes(t.label)); const L = tilesLight(tiles);
+  const txt = c.form[key] || draftAnswers(S)[key];
+  return `<div class="stack">${ampel(L)}${lightsList(tiles)}<details data-evkey="auto-${key}" ${c.ui.ev["auto-"+key] ? "open" : ""}><summary>Learn more</summary><div class="stack" style="padding-top:10px"><p class="small muted">${S.example ? "Illustrative example; not retrieved live." : "Retrieved " + h(fmtDate(S.fetchedAt)) + " from " + h(S.source)}</p><p class="small" style="white-space:pre-wrap">${h(txt)}</p>${extra || ""}</div></details></div>`;
 }
 function licensePanel(S){
   const L = S && S.ok && S.license || {};
