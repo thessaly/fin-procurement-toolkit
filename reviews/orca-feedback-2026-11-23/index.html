@@ -1210,7 +1210,7 @@ const DECISION = { proceed:"Proceed", "proceed-conditions":"Proceed with conditi
 const label = (opts, v) => (opts.find(o => o[0] === v) || [v, v])[1];
 
 function ctxOf(c){ return formToContext(c.form); }
-function caseTitle(c){ const o = (c.form.objective||"").trim(); if(o) return o.length > 70 ? o.slice(0, 67).replace(/\s+\S*$/,"") + "…" : o; return c.form.candidate || "Untitled assessment"; }
+function caseTitle(c){ const n = (c.form.candidate||"").trim(); if(n && !/^unknown$/i.test(n)) return n; const o = (c.form.objective||"").trim(); if(o) return o.length > 70 ? o.slice(0, 67).replace(/\s+\S*$/,"") + "…" : o; return "New request"; }
 function newCase(repoUrl, candidate){ const f = emptyForm(); f.repoUrl = repoUrl || ""; f.candidate = candidate || ""; return { createdAt: new Date().toISOString(), form: f, answers: {}, ownership: {}, signals: null, evidence: {}, ui: { filter:"all", open:{}, ev:{} } }; }
 
 // ---------- Router ----------
