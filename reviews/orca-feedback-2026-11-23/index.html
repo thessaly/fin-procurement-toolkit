@@ -313,6 +313,8 @@ textarea{min-height:96px}
 .ampel b{font-weight:700}
 .lights{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:8px 20px;font-size:15px}
 .lights li{display:flex;gap:10px;align-items:center} .lights i{flex:none;width:11px;height:11px;border-radius:50%;background:var(--line-strong)}
+.depcall{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;background:var(--surface);border:1.5px solid var(--accent)}
+.depcall b{font-size:16px}
 .autobox.slim{display:block;padding:10px 16px;font-size:14.5px;font-weight:500}
 .autobox.empty{background:var(--surface);border:1.5px dashed var(--line-strong);color:var(--fg)}
 .qcard{padding:30px 32px;gap:14px;border-radius:20px;border-color:transparent;box-shadow:0 1px 2px rgba(15,27,45,.05),0 18px 40px -24px rgba(15,27,45,.28)}
@@ -1369,8 +1371,8 @@ function viewForm(c){
       </div>
       <div id="routeBox">${routeBanner(R)}</div>
       <details class="small"><summary>How is an extended review triggered?</summary><div class="stack" style="padding-top:8px"><p>Any one of these is enough. Otherwise a lighter review is suggested.</p><p><b>From your answers</b></p><ul style="margin:0;padding-left:18px"><li>Data is not public</li><li>Institution-wide or externally hosted systems, or external hosting requested</li><li>High impact of failure</li><li>Clinical or safety-critical use</li><li>Physical hardware</li></ul><p><b>From the project's repository</b></p><ul style="margin:0;padding-left:18px"><li>No license, or one that is not recognised or not on the OSI list</li><li>Repository archived, or no activity for over a year</li><li>No security policy file</li><li>Known vulnerabilities (OpenSSF Scorecard)</li><li>One person wrote more than 80% of a project with fewer than ten contributors</li></ul><p class="muted">Asking for development or modification work shows "Scope needs clarifying first" instead.</p></div></details>`)}
-    ${card(TEN[6], `<p class="hint"><b>Nothing to answer here.</b></p>` + autoPanel(c,"licensing", licensePanel(S) + dependencyLink(S)) + evFor(TEN[6]))}
-    ${card(TEN[7], `<p class="hint"><b>Nothing to answer here.</b></p>` + autoPanel(c,"maintenance") + evFor(TEN[7]))}
+    ${card(TEN[6], `<p class="hint"><b>Nothing to answer here.</b></p>` + autoPanel(c,"licensing", licensePanel(S)) + evFor(TEN[6]))}
+    ${card(TEN[7], `<p class="hint"><b>Nothing to answer here.</b></p>` + autoPanel(c,"maintenance") + (S && S.ok ? dependencyCallout(S) : "") + evFor(TEN[7]))}
     ${card(TEN[8], `<div class="checks">${["yes","no"].map(v => `<label class="check"><input type="radio" name="localTested" data-f="localTested" value="${v}" ${f.localTested===v?"checked":""}>${v==="yes"?"Yes":"No"}</label>`).join("")}</div><label class="field">Notes (optional)<input type="text" data-f="testNotes" value="${h(f.testNotes||"")}"></label>`)}
     ${card(UPSTREAM_STEP, renderUpstream(c, true))}
     <div class="row stepnav"><button class="btn" data-act="step-back" ${!(c.ui.step||0)?"disabled":""}>Previous</button>${(c.ui.step||0)<REQUEST_STEPS.length-1?`<button class="btn primary" data-act="step-next">Next step</button>`:`<a class="btn primary" href="#done">Finish</a>`}</div>
@@ -1410,7 +1412,7 @@ function viewReview(c){
       <div class="row"><a class="btn small" href="#form">Request form</a><a class="btn small primary" href="#report">Record</a></div>
     </header>
     ${exampleBanner(c, "reviewer")}${stageStrip([2,3,4])}
-    ${projectGlance(c, licensePanel(c.signals) + dependencyLink(c.signals))}
+    ${projectGlance(c, licensePanel(c.signals))}
     <p class="small muted num" id="reviewProgress" aria-live="polite">${marked}/${act.length} areas marked</p>
     <div class="areas">${[2,3,4].map(n => { const list = act.filter(a => (a.stage||2) === n); return list.length ? `<h2 class="stageh">Stage ${n} · ${h(STAGES[n-1].name)}</h2>` + list.map(a => renderArea(c, a)).join("") : ""; }).join("")}</div>
     ${inact.length ? `<details class="small muted"><summary>Not triggered by this request: ${inact.map(a => h(a.name)).join(", ")}</summary><p style="padding-top:6px">These areas switch on when the answers change (for example data that is not public, a paid provider, shared systems, or physical hardware).</p></details>` : ""}
@@ -1457,6 +1459,7 @@ function renderArea(c, a){
       </div>
       <div class="seg">${AREA_VERDICTS.map(([k,l]) => `<label><input type="radio" name="a-${a.id}" value="${k}" data-area-verdict="${a.id}" ${v===k?"checked":""}>${l}</label>`).join("")}</div>
     </div>
+    ${a.id === "continuity" && c.signals && c.signals.ok ? dependencyCallout(c.signals) : ""}
     ${own.length ? `<div class="ev"><div class="evi"><span class="evl">Requester</span><span class="evv">${own.map(n => h(researcherText(c, n) || "—")).join("<br>")}</span></div></div>` : ""}
     ${items.length || drafted.length ? `<details class="evd" ${open ? "open" : ""} data-evkey="${a.id}"><summary>Learn more <span class="muted">(${items.length} repository signal${items.length===1?"":"s"})</span></summary><div class="stack" style="padding-top:8px"><p class="small muted"><b>${evidenceLabel(items,c.signals,areaRepoInformed(a))}</b>${c.signals?.ok ? " · " + (c.signals.example ? "Illustrative example" : "Retrieved " + h(fmtDate(c.signals.fetchedAt))) : ""}</p>${drafted.map(n => `<p class="small" style="white-space:pre-wrap">${h(researcherText(c, n) || "")}</p>`).join("")}<div class="ev">${items.map(it => `<div class="evi"><span class="dot ${it.ok===true?"ok":it.ok===false?"bad":it.ok==="mixed"?"mixed":""}"></span><span class="evl">${h(it.label)}</span><span class="evv">${it.link ? `<a href="${h(it.link)}" target="_blank" rel="noopener">${h(it.value)}</a>` : h(it.value)}</span><span class="evs">${h(it.src)} · ${signalWord(it)}</span></div>`).join("")}</div></div></details>` : ""}
     <label class="field">Notes <textarea data-area-note="${a.id}" placeholder="What was checked, by whom, and where it is documented">${h(ans.note||"")}</textarea></label>
@@ -1720,6 +1723,10 @@ function dependencyText(S){
   const d=S.dependencies;
   if(!d || d.status!=="retrieved") return "Dependency graph unavailable; no conclusion about dependency absence or license compatibility.";
   return `GitHub SBOM: ${d.packages.length} packages, ${d.edges.length} reported relationships. Snapshot: ${d.created||"not supplied"}. Source: ${d.source}\n`+d.packages.map(p=>`${p.name} ${p.version}: used by ${dependentCount(d,p.id)} components; critical: ${d.review?.[p.id]?.critical||"Not assessed"}; role/impact: ${d.review?.[p.id]?.note||"Not recorded"}; license: ${p.license} (${licenseClass(p.license)})`).join("\n")+`\nOther critical software/services: ${d.context||"Not recorded"}`;
+}
+function dependencyCallout(S){
+  const d = S && S.dependencies; const n = d && d.status === "retrieved" ? d.packages.length : null;
+  return `<div class="banner depcall"><div><b>Dependencies</b><span>${n != null ? `This project relies on ${n} other package${n===1?"":"s"}.` : "The other software this project relies on."}</span></div><a class="btn primary" href="#dependencies">Open dependency analysis</a></div>`;
 }
 function dependencyLink(S){
   const d = S && S.dependencies; const n = d && d.status === "retrieved" ? d.packages.length : null;
