@@ -1021,7 +1021,7 @@ function areaSignalSummary(a, c){
 function lightOf(n){
   const rated = n.ok + n.bad + n.mixed; if(!rated) return { state:"none", word:"No signal" };
   const state = n.ok / rated >= 0.75 ? "ok" : n.bad / rated > 0.5 ? "bad" : "warn";
-  return { state, word: state === "ok" ? "Looks good" : state === "warn" ? "Some points to check" : "Needs attention" };
+  return { state, word: state === "ok" ? "Mostly positive" : state === "warn" ? "Mixed" : "Mostly gaps" };
 }
 function ampel(L, detail){ return `<p class="ampel ${L.state}"><i aria-hidden="true"></i><b>${h(L.word)}</b>${detail ? ` <span class="muted small">${h(detail)}</span>` : ""}</p>`; }
 function tilePlain(t){
@@ -1035,7 +1035,7 @@ function tilePlain(t){
 }
 function tilesLight(tiles){ const n = { ok:0, bad:0, mixed:0 }; tiles.forEach(t => { if(t.state === "ok") n.ok++; else if(t.state === "warn") n.mixed++; else if(t.state === "bad") n.bad++; }); return Object.assign(lightOf(n), { n, rated: n.ok+n.bad+n.mixed }); }
 function lightsList(tiles){ return `<ul class="lights">${tiles.map(t => `<li class="${t.state}"><i aria-hidden="true"></i><span>${h(tilePlain(t))}</span></li>`).join("")}</ul>`; }
-function glanceLine(c){ const S = c.signals; if(!S || !S.ok) return ""; const L = tilesLight(glanceTiles(S)); return ampel({ state:L.state, word:"Project: " + L.word.toLowerCase() }, `${L.n.ok} of ${L.rated} checks positive`); }
+function glanceLine(c){ const S = c.signals; if(!S || !S.ok) return ""; const L = tilesLight(glanceTiles(S)); return ampel({ state:L.state, word:"Repository check: " + L.word.toLowerCase() }, `${L.n.ok} of ${L.rated} checks positive`); }
 function projectGlance(c, extra){
   const S = c.signals; if(!S || !S.ok) return "";
   const tiles = glanceTiles(S); const L = tilesLight(tiles);
