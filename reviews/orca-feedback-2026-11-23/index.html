@@ -1041,7 +1041,7 @@ function projectGlance(c, extra){
   const tiles = glanceTiles(S); const L = tilesLight(tiles);
   return `<section class="card stack"><div class="row" style="justify-content:space-between"><h3>The project at a glance</h3>${ampel(L, `${L.n.ok} of ${L.rated} checks positive`)}</div>
     ${lightsList(tiles)}
-    <p class="small muted">The lights describe what the project's repository shows. They are not an approval or a rejection.</p>
+    <p class="small muted">Based on information pulled automatically from the project's repository.</p>
     <details data-evkey="glance" ${c.ui.ev.glance ? "open" : ""}><summary>Learn more</summary><div class="stack" style="padding-top:10px">${evidenceLegend()}<section class="glance">${tiles.map(t => `<div class="tile ${t.state}"><span class="tl">${h(t.label)}</span><span class="tv">${h(t.value)}</span><span class="ts"><i></i>${h(t.word)}</span>${t.sub ? `<span class="tsub">${h(t.sub)}</span>` : ""}</div>`).join("")}</section><p class="small muted">${S.example ? "Illustrative snapshot" : "Read " + h(fmtDate(S.fetchedAt)) + " from " + h(S.source)}${S.scorecard ? ` and OpenSSF Scorecard` : ""}${S.errors.length ? `; ${S.errors.length} call${S.errors.length===1?"":"s"} failed (<a href="#form" data-act="showlog">log</a>)` : ""}.</p><div id="fetchLogBox" class="log" hidden>${h(S.errors.join("\n"))}</div>${extra || ""}</div></details>
   </section>`;
 }
