@@ -1276,7 +1276,9 @@ function exampleBanner(c, role){
 }
 
 const UPSTREAM_STEP = { n:11, key:"upstream", q:"Optional: submit feedback to project developer team", xw:[] };
-const REQUEST_STEPS = TEN.filter(t => t.n !== 4).concat(UPSTREAM_STEP);
+// The request starts with the project and its link, then the requester describes their work.
+const RECORD_STEPS = [TEN[2]].concat(TEN.filter(t => t.n !== 4 && t.n !== 3));
+const REQUEST_STEPS = RECORD_STEPS.concat(UPSTREAM_STEP);
 const WHY = {
  objective:"Staff need to know what the request is for.",
  rationale:"Shows the fit and the alternatives considered.",
@@ -1307,7 +1309,7 @@ function evidenceLabel(items,S,informed){
 function signalWord(it){ return it.ok===true ? "positive" : it.ok===false ? "missing or negative" : it.ok==="mixed" ? "to check" : "for information"; }
 function autoSummary(c){
   const S = c.signals;
-  if(!S || !S.ok) return `<div class="autobox empty"><b>Add the project link in step 3</b> and the toolkit fills in steps 6 to 8, suggests the review and drafts a note to the project.</div>`;
+  if(!S || !S.ok) return `<div class="autobox empty"><b>Add the project link in step 1</b> and the toolkit fills in steps 6 to 8, suggests the review and drafts a note to the project.</div>`;
   const read = ["license","activity","maintainers","security","docs"].concat(S.scorecard ? ["Scorecard"] : []);
   const n = Object.values(c.evidence||{}).reduce((a,e) => a + (e.items||[]).filter(i => i.src !== "toolkit").length, 0);
   const gaps = detectGaps(S).length; const R = computeRoute(ctxOf(c), S, {});
@@ -1418,7 +1420,7 @@ function viewReview(c){
   </div>`;
 }
 function renderUpstream(c, inForm){
-  const S = c.signals; if(!S || !S.ok) return inForm ? `<p class="small muted">Add the project's repository link in step 3 and the toolkit will list what the project is missing and draft the note for you.</p>` : `<section class="card stack" id="upstream"><h3>Feedback to the project</h3><p class="small muted">Once the repository has been read, the gaps it shows can be flagged to the project owners from here.</p></section>`;
+  const S = c.signals; if(!S || !S.ok) return inForm ? `<p class="small muted">Add the project's repository link in step 1 and the toolkit will list what the project is missing and draft the note for you.</p>` : `<section class="card stack" id="upstream"><h3>Feedback to the project</h3><p class="small muted">Once the repository has been read, the gaps it shows can be flagged to the project owners from here.</p></section>`;
   const gaps = detectGaps(S); c.upstream = c.upstream || { selected: null, text: null, sent: false };
   if(!c.upstream.selected) c.upstream.selected = gaps.map(g => g.id);
   const sel = gaps.filter(g => c.upstream.selected.includes(g.id)); const draft = upstreamIssueText(c, sel);
@@ -1498,7 +1500,7 @@ function viewReport(c){
     </section>
     <section class="stack">
       <h2>Request and supporting information</h2>
-      <dl class="ten">${TEN.filter(t => t.n !== 4).map(t => `<dt><span class="mono">${String(t.n > 4 ? t.n-1 : t.n).padStart(2,"0")}</span> ${h(t.q)}</dt><dd>${h(tenAnswer(c,t))}${t.auto && c.form.drafts && c.form.drafts[t.key] && c.form[t.key] === c.form.drafts[t.key] ? ` <span class="small muted">(drafted from repository signals, unedited)</span>` : ""}</dd>`).join("")}</dl>
+      <dl class="ten">${RECORD_STEPS.map((t,i) => `<dt><span class="mono">${String(i+1).padStart(2,"0")}</span> ${h(t.q)}</dt><dd>${h(tenAnswer(c,t))}${t.auto && c.form.drafts && c.form.drafts[t.key] && c.form[t.key] === c.form.drafts[t.key] ? ` <span class="small muted">(drafted from repository signals, unedited)</span>` : ""}</dd>`).join("")}</dl>
     </section>
     ${S && S.ok ? `<section class="stack">
       <h2>Repository evidence snapshot</h2>${evidenceLegend()}
@@ -1663,7 +1665,7 @@ function caseMarkdown(c){
   L.push(`## Route and decision`, "", `Route: **${R.route === "light" ? "Light review" : R.route === "extended" ? "Extended review" : "Clarify scope"}**`, "");
   R.triggers.forEach(t => L.push(`- ${t.text}${t.refer ? " (refer: " + t.refer + ")" : ""}`)); if(!R.triggers.length) L.push("- No extended-review triggers.");
   L.push("", `Decision: ${DECISION[own.decision||"open"]}`, `Decision owner: ${own.owner||"—"}`, `Operational owner: ${own.operator||"—"}`, `Conditions: ${own.conditions||"—"}`, `Review: ${own.reviewDate||"—"}${own.reviewTrigger ? " · " + own.reviewTrigger : ""}`, "");
-  L.push(`## Request and supporting information`, ""); TEN.filter(t => t.n !== 4).forEach(t => { L.push(`**${String(t.n > 4 ? t.n-1 : t.n).padStart(2,"0")} ${t.q}**`, "", tenAnswer(c,t) + (t.auto && c.form.drafts && c.form.drafts[t.key] && c.form[t.key] === c.form.drafts[t.key] ? " _(drafted from repository signals, unedited)_" : ""), ""); });
+  L.push(`## Request and supporting information`, ""); RECORD_STEPS.forEach((t,i) => { L.push(`**${String(i+1).padStart(2,"0")} ${t.q}**`, "", tenAnswer(c,t) + (t.auto && c.form.drafts && c.form.drafts[t.key] && c.form[t.key] === c.form.drafts[t.key] ? " _(drafted from repository signals, unedited)_" : ""), ""); });
   if(S && S.ok){ L.push(`Evidence labels: Information retrieved means source information, not verified suitability. Needs review means illustrative, incomplete or uncertain. No information available does not establish absence. Not a repository question means the answer depends on the request and the institution.`, ""); L.push(`## Dependency evidence`, "", dependencyText(S), ""); L.push(`## Repository evidence snapshot`, "", `Fetched ${fmtDate(S.fetchedAt)} from ${S.source}.${S.scorecard ? ` OpenSSF Scorecard ${S.scorecard.score != null ? S.scorecard.score.toFixed(1) : "—"}/10 (${fmtDate(S.scorecard.date)}).` : ""}`, ""); evidenceSnapshotRows(S).forEach(([k,v]) => L.push(`- ${k}: ${v}`)); if(S.errors.length) L.push(`- Not retrieved: ${S.errors.join("; ")}`); L.push(""); }
   L.push(`## Institutional review`, "", `| Area | Mark | Notes and signals |`, `|---|---|---|`);
   activeAreas(c).forEach(a => { const ans = c.answers[a.id]||{}; const sp = areaSpecialist(a, c); const sum = areaSignalSummary(a, c); L.push(`| ${a.name}${sp ? " (→ " + sp + ")" : ""} | ${ans.verdict ? AREA_VLABEL[ans.verdict] : "open"} | ${[evidenceLabel(areaEvidence(a,c),S,areaRepoInformed(a)), ans.note, sum ? `${sum.count} signals: ${sum.ok} positive${sum.mixed ? ", " + sum.mixed + " to check" : ""}${sum.bad ? ", " + sum.bad + " missing or negative" : ""}` : ""].filter(Boolean).join(" — ").replace(/\|/g,"\\|").replace(/\n/g," ")} |`); });
@@ -1687,7 +1689,7 @@ function licenseClass(id){
 }
 function autoPanel(c,key,extra){
   const S = c.signals;
-  if(!S || !S.ok) return `<div class="banner"><p>No project link yet. Add one in step 3 and this part fills itself in.</p></div>`;
+  if(!S || !S.ok) return `<div class="banner"><p>No project link yet. Add one in step 1 and this part fills itself in.</p></div>`;
   const map = { licensing:["License"], maintenance:["Activity","Maintainers"], resources:["Security","Documentation","OpenSSF Scorecard"] };
   const tiles = glanceTiles(S).filter(t => (map[key]||[]).includes(t.label)); const L = tilesLight(tiles);
   const txt = c.form[key] || draftAnswers(S)[key];
