@@ -916,7 +916,7 @@ const TEN = [
   { n:7, key:"licensing",  q:"Check the project information: license", label:"License, design rights and known obligations", hint:"Identify the license and permission to use, modify, distribute or fabricate. Include dependency obligations. Unknown is acceptable and creates a follow-up.", xw:["Q03","Q04","Q05","Q06","Q07","Q53"], auto:true },
   { n:8, key:"maintenance",q:"Check the project information: maintenance", label:"Available support and continuity", hint:"Name actual maintainer / supplier availability and your team's capacity. Explain what happens if support or funding stops.", xw:["Q08","Q10","Q14","Q16","Q23","Q24","Q25","Q26","Q27","Q43","Q44","Q45","Q46","Q47"], auto:true },
   { n:9, key:"resources",  q:"Have you already used this software in the past?", label:"Resources, cost and acceptance", hint:"Estimate staff effort and lifecycle cost. Include practical testing, documentation, accessibility and hardware acceptance where relevant. Unknown is acceptable.", xw:["Q18","Q19","Q20","Q21","Q22","Q28","Q29","Q30","Q32","Q48","Q49","Q50","Q51","Q57"], auto:true },
-  { n:10,key:"contact",    q:"Who is responsible for coordinating this request?", label:"Research team contact and responsible unit", hint:"Person or role, and unit. No notification is sent.", xw:["Q49","Q59","Q60","Q62"] }
+  { n:10,key:"contact",    q:"Who is submitting this request?", label:"Research team contact and responsible unit", hint:"Person or role, and unit. No notification is sent.", xw:["Q49","Q59","Q60","Q62"] }
 ];
 
 function emptyForm(){ return { objective:"", rationale:"", candidate:"", type:"software", version:"", repoUrl:"", use:"", support:[], data:"public", systems:"local", impact:"moderate", clinical:"unknown", licensing:"", maintenance:"", resources:"", contact:"", deliverable:"", provider:"", budget:"", localTested:"", testNotes:"", drafts:{} }; }
@@ -1217,13 +1217,14 @@ function newCase(repoUrl, candidate){ const f = emptyForm(); f.repoUrl = repoUrl
 function route(){
   const view = (location.hash || "#home").slice(1);
   document.querySelectorAll("nav.main a").forEach(a => a.removeAttribute("aria-current"));
-  const navKey = ["form","report","review","dependencies"].includes(view) ? "home" : view;
+  const navKey = ["form","report","review","dependencies","done"].includes(view) ? "home" : view;
   const na = document.querySelector(`nav.main a[data-nav="${navKey}"]`); if(na) na.setAttribute("aria-current","page");
   const app = $("#app");
   if(view === "form" && CASE) app.innerHTML = viewForm(CASE);
   else if(view === "report" && CASE) app.innerHTML = viewReport(CASE);
   else if(view === "review" && CASE) app.innerHTML = viewReview(CASE);
   else if(view === "dependencies" && CASE) app.innerHTML = viewDependencies(CASE);
+  else if(view === "done" && CASE) app.innerHTML = viewDone(CASE);
   else if(view === "about") app.innerHTML = viewAbout();
   else if(view === "sources") app.innerHTML = viewSources();
   else app.innerHTML = viewHome();
@@ -1240,7 +1241,7 @@ function viewHome(){
     <div class="startpanel">
       <label for="startUrl">Paste the project's link to begin</label>
       <form id="startForm" class="start"><input type="url" id="startUrl" name="url" placeholder="https://github.com/org/project" autocomplete="off"><button class="btn go" type="submit">Start</button></form>
-      <ul><li>Reads license, activity, security and docs</li><li>Fills in three steps for you</li><li>Drafts feedback to the developers</li></ul>
+      <ul><li>Reads license, activity, security and docs</li><li>Fills in two steps for you</li><li>Drafts feedback to the developers</li></ul>
       <p class="small">GitHub, GitLab and Codeberg links work. <a href="#home" data-act="new-request">Start without a link</a>${HOSTED ? "" : ` or <a href="#home" data-act="token">add a GitHub token</a>`}.</p>
       <div id="startExtra" class="card stack" hidden></div>
     </div>
@@ -1261,7 +1262,7 @@ function viewHome(){
   <section class="stack">
     <h2>How it works</h2>
     <div class="howto">
-      <div class="step"><span class="n">1</span><b>Describe the request</b><p class="small muted">Ten short steps. Three are filled in for you.</p></div>
+      <div class="step"><span class="n">1</span><b>Describe the request</b><p class="small muted">Seven short steps. Two are filled in for you.</p></div>
       <div class="step"><span class="n">2</span><b>Hand it to staff</b><p class="small muted">Send the request file. Staff review it and involve specialists if needed.</p></div>
       <div class="step"><span class="n">3</span><b>Record the decision</b><p class="small muted">Download the record for your institution's process.</p></div>
       <div class="step"><span class="n">4</span><b>Send feedback to the developers</b><p class="small muted">Optional. A drafted note helps open source you use become fundable.</p></div>
@@ -1275,10 +1276,19 @@ function exampleBanner(c, role){
   return `<div class="banner info"><b>Example request: ${h(ex.title)}.</b> ${h(ex.note)} ${!HOSTED && ex.live ? `<a href="#" data-act="fetch">Read the repository live</a> · ` : ""}<a href="#${role === "reviewer" ? "form" : "review"}">Switch to the ${role === "reviewer" ? "request form" : "staff review"}</a> · <a href="#home" data-act="start-own">Start your own request</a></div>`;
 }
 
-const UPSTREAM_STEP = { n:11, key:"upstream", q:"Optional: submit feedback to project developer team", xw:[] };
+const UPSTREAM_STEP = { n:11, key:"upstream", q:"Share the analysis with the developer team (optional)", xw:[] };
 // The request starts with the project and its link, then the requester describes their work.
-const RECORD_STEPS = [TEN[2]].concat(TEN.filter(t => t.n !== 4 && t.n !== 3));
-const REQUEST_STEPS = RECORD_STEPS.concat(UPSTREAM_STEP);
+// Seven steps. A step can show more than one card (keys). The research objective is no longer asked.
+const RECORD_STEPS = [TEN[9], TEN[2], TEN[4], TEN[1], TEN[8], TEN[5], TEN[6], TEN[7]];
+const REQUEST_STEPS = [
+  { q:"Who is asking, and for which project", keys:["contact","candidate"] },
+  { q:"What help you need", keys:["support"] },
+  { q:"How you will use it and why", keys:["rationale","resources"] },
+  { q:"Risks", keys:["exposure"] },
+  { q:"License", keys:["licensing"], auto:true },
+  { q:"Maintenance", keys:["maintenance"], auto:true },
+  { q:"Share with the developer team", keys:["upstream"] }
+];
 const WHY = {
  objective:"Staff need to know what the request is for.",
  rationale:"Shows the fit and the alternatives considered.",
@@ -1309,19 +1319,19 @@ function evidenceLabel(items,S,informed){
 function signalWord(it){ return it.ok===true ? "positive" : it.ok===false ? "missing or negative" : it.ok==="mixed" ? "to check" : "for information"; }
 function autoSummary(c){
   const S = c.signals;
-  if(!S || !S.ok) return `<div class="autobox empty"><b>Add the project link in step 1</b> and the toolkit fills in steps 6 to 8, suggests the review and drafts a note to the project.</div>`;
+  if(!S || !S.ok) return `<div class="autobox empty"><b>Add the project link in step 1</b> and the toolkit fills in steps 5 and 6, suggests the review and drafts a note to the project.</div>`;
   const read = ["license","activity","maintainers","security","docs"].concat(S.scorecard ? ["Scorecard"] : []);
   const n = Object.values(c.evidence||{}).reduce((a,e) => a + (e.items||[]).filter(i => i.src !== "toolkit").length, 0);
   const gaps = detectGaps(S).length; const R = computeRoute(ctxOf(c), S, {});
-  if((c.ui.step||0) > 0) return `<div class="autobox slim">✓ Done for you: ${n} signals read, steps 6 to 8 filled in, feedback drafted on ${gaps} gap${gaps===1?"":"s"}.</div>`;
-  return `<div class="autobox"><b>Done for you automatically</b><ul><li><span><b>Read:</b> ${h(read.join(", "))} (${n} signals).</span></li><li><span><b>Filled in:</b> steps 6 to 8.</span></li><li><span><b>Suggested:</b> ${R.route === "light" ? "lighter review" : R.route === "extended" ? "extended review" : "clarify scope first"}, ${activeAreas(c).length} review areas.</span></li><li><span><b>Drafted:</b> feedback to the developers on ${gaps} gap${gaps===1?"":"s"} (last step).</span></li></ul><span class="small muted">You write steps 1 to 5 and 9.</span></div>`;
+  if((c.ui.step||0) > 0) return `<div class="autobox slim">✓ Done for you: ${n} signals read, steps 5 and 6 filled in, feedback drafted on ${gaps} gap${gaps===1?"":"s"}.</div>`;
+  return `<div class="autobox"><b>Done for you automatically</b><ul><li><span><b>Read:</b> ${h(read.join(", "))} (${n} signals).</span></li><li><span><b>Filled in:</b> steps 5 and 6.</span></li><li><span><b>Suggested:</b> ${R.route === "light" ? "lighter review" : R.route === "extended" ? "extended review" : "clarify scope first"}, ${activeAreas(c).length} review areas.</span></li><li><span><b>Drafted:</b> feedback to the developers on ${gaps} gap${gaps===1?"":"s"} (last step).</span></li></ul><span class="small muted">You write steps 1 to 4.</span></div>`;
 }
 function stageStrip(cur){ return `<nav class="pathway" aria-label="Where this request is in the pathway">${STAGES.map(s => { const on = cur.includes(s.n); return `<div class="step ${on?"cur":""}"><span class="n">${s.n}</span><b>${h(s.name)}</b><span class="small muted">${h(s.owner)}</span></div>`; }).join("")}</nav>`; }
 function evidenceLegend(){return `<p class="small muted"><b>Information retrieved</b>: found, not verified. <b>Needs review</b>: uncertain or incomplete. <b>No information available</b>: nothing found, not proof of absence. <b>Not a repository question</b>: depends on the request and your institution.</p>`;}
 // ---------- The form ----------
 function viewForm(c){
   const f = c.form, S = c.signals, E = c.evidence || {}; const x = ctxOf(c); const R = computeRoute(x, S, {});
-  const card = (t, body) => `<section class="card qcard" id="q${t.n}" ${REQUEST_STEPS[c.ui.step||0].key===t.key?"":"hidden"}>${t.auto && c.signals && c.signals.ok ? `<p><span class="pill auto">Filled in for you</span></p>` : ""}<h3 tabindex="-1">${h(t.q)}</h3>${body}<details class="small muted"><summary>Why we ask</summary><p style="padding-top:4px">${h(WHY[t.key])}</p></details></section>`;
+  const card = (t, body) => `<section class="card qcard" id="q${t.n}" ${REQUEST_STEPS[c.ui.step||0].keys.includes(t.key)?"":"hidden"}>${t.auto && t.key !== "resources" && c.signals && c.signals.ok ? `<p><span class="pill auto">Filled in for you</span></p>` : ""}<h3 tabindex="-1">${h(t.q)}</h3>${body}<details class="small muted"><summary>Why we ask</summary><p style="padding-top:4px">${h(WHY[t.key])}</p></details></section>`;
   const ta = (t, extra) => `<label class="field">${extra||""}<textarea data-f="${t.key}" rows="3" aria-label="${h(t.label)}" placeholder="${h(t.hint)}">${h(f[t.key]||"")}</textarea></label>`;
   const evFor = (t) => { const ids = t.xw.filter(id => E[id] && E[id].items && E[id].items.length); if(!ids.length) return ""; const items = []; const seen = new Set(); ids.forEach(id => E[id].items.forEach(it => { const k = it.label + it.value; if(it.src !== "toolkit" && !seen.has(k)){ seen.add(k); items.push(it); } })); return `<details class="evd" ${c.ui.ev[t.key] ? "open" : ""} data-evkey="${t.key}"><summary>Learn more: repository sources <span class="muted">(${items.length})</span></summary><div class="ev">${items.map(it => `<div class="evi"><span class="dot ${it.ok===true?"ok":it.ok===false?"bad":it.ok==="mixed"?"mixed":""}"></span><span class="evl">${h(it.label)}</span><span class="evv">${it.link ? `<a href="${h(it.link)}" target="_blank" rel="noopener">${h(it.value)}</a>` : h(it.value)}</span><span class="evs">${h(it.src)} · ${signalWord(it)}</span></div>`).join("")}</div></details>`; };
   const draftNote = (t) => f.drafts && f.drafts[t.key] ? (f[t.key] === f.drafts[t.key] ? `<span class="draft">Drafted from the repository on ${h(fmtDate(S && S.fetchedAt))}. Edit freely.</span>` : `<span class="draft">Edited. <a href="#form" data-act="redraft" data-key="${t.key}">Restore the repository draft</a></span>`) : "";
@@ -1338,6 +1348,7 @@ function viewForm(c){
     ${S && S.ok === false ? `<div class="banner warn"><b>Could not read the repository.</b> ${h((S.errors||[]).join(" "))} Answer the questions by hand, or fix the link in question 3.</div>` : ""}
     ${f.repoUrl && HOSTED ? `<div class="banner info">This hosted copy cannot reach repository APIs, so nothing is drafted here. Open the toolkit from your own site to have licensing, maintenance and resources pre-filled.</div>` : ""}
 
+    ${card(TEN[9], `<label class="field"><input type="text" data-f="contact" aria-label="${h(TEN[9].label)}" value="${h(f.contact)}" placeholder="Name or role, and unit"></label>`)}
     ${card(TEN[0], ta(TEN[0]))}
     ${card(TEN[1], ta(TEN[1]))}
     ${card(TEN[2], `<div class="grid2">
@@ -1359,12 +1370,10 @@ function viewForm(c){
       <div id="routeBox">${routeBanner(R)}</div>`)}
     ${card(TEN[6], `<p class="hint"><b>Nothing to answer here.</b></p>` + autoPanel(c,"licensing", licensePanel(S) + dependencyLink(S)) + evFor(TEN[6]))}
     ${card(TEN[7], `<p class="hint"><b>Nothing to answer here.</b></p>` + autoPanel(c,"maintenance") + evFor(TEN[7]))}
-    ${card(TEN[8], `<div class="checks">${["yes","no"].map(v => `<label class="check"><input type="radio" name="localTested" data-f="localTested" value="${v}" ${f.localTested===v?"checked":""}>${v==="yes"?"Yes":"No"}</label>`).join("")}</div><label class="field">Notes (optional)<input type="text" data-f="testNotes" value="${h(f.testNotes||"")}"></label>` + autoPanel(c,"resources") + evFor(TEN[8]))}
-    ${card(TEN[9], `<label class="field"><input type="text" data-f="contact" aria-label="${h(TEN[9].label)}" value="${h(f.contact)}" placeholder="Name or role, and unit"></label>`)}
+    ${card(TEN[8], `<div class="checks">${["yes","no"].map(v => `<label class="check"><input type="radio" name="localTested" data-f="localTested" value="${v}" ${f.localTested===v?"checked":""}>${v==="yes"?"Yes":"No"}</label>`).join("")}</div><label class="field">Notes (optional)<input type="text" data-f="testNotes" value="${h(f.testNotes||"")}"></label>`)}
     ${card(UPSTREAM_STEP, renderUpstream(c, true))}
-    <div class="row stepnav"><button class="btn" data-act="step-back" ${!(c.ui.step||0)?"disabled":""}>Previous</button>${(c.ui.step||0)<REQUEST_STEPS.length-1?`<button class="btn primary" data-act="step-next">Next step</button>`:`<a class="btn primary" href="#review">Continue to institutional review</a>`}</div>
+    <div class="row stepnav"><button class="btn" data-act="step-back" ${!(c.ui.step||0)?"disabled":""}>Previous</button>${(c.ui.step||0)<REQUEST_STEPS.length-1?`<button class="btn primary" data-act="step-next">Next step</button>`:`<a class="btn primary" href="#done">Finish</a>`}</div>
     ${projectGlance(c)}
-    <div class="row formfoot" style="justify-content:space-between"><p>Nothing is stored. Save the request file and send it to staff.</p><div class="row"><button class="btn" data-act="export-json">Save request file for staff</button><a class="btn" href="#report">Review the record</a><button class="btn" data-act="export-md">Download Markdown</button></div></div>
   </div>`;
 }
 function routeBanner(R){
@@ -1481,7 +1490,7 @@ function tenAnswer(c, t){
 function viewReport(c){
   const S = c.signals; const E = c.evidence || {}; const x = ctxOf(c); const R = computeRoute(x, S, {}); const own = c.ownership || {};
   const specialist = [...new Set(R.triggers.filter(t => t.refer).map(t => t.refer))];
-  const unknowns = REQUEST_STEPS.filter(t => /^unknown/i.test(String(c.form[t.key]||"").trim())).map(t => t.n>4?t.n-1:t.n);
+  const unknowns = RECORD_STEPS.map((t,i) => [t,i]).filter(([t]) => /^unknown/i.test(String(c.form[t.key]||"").trim())).map(([t,i]) => i+1);
   return `
   <div class="row noprint" style="justify-content:space-between"><div class="row"><a class="btn" href="#form">← Request form</a><a class="btn" href="#review">Institutional staff review</a></div><div class="row"><button class="btn" data-act="export-md">Download Markdown</button><button class="btn" data-act="export-json">Download JSON</button>${HOSTED ? "" : `<button class="btn primary" data-act="print">Print / save as PDF</button>`}</div></div>
   <article class="report" id="reportDoc">
@@ -1714,6 +1723,16 @@ function dependencyText(S){
 function dependencyLink(S){
   const d = S && S.dependencies; const n = d && d.status === "retrieved" ? d.packages.length : null;
   return `<p><a class="btn small" href="#dependencies">Open dependency analysis${n != null ? ` (${n} packages)` : ""}</a></p>`;
+}
+function viewDone(c){
+  return `<div class="formv"><section class="card qcard" style="text-align:center;justify-items:center;padding-block:48px">
+    <p><span class="pill auto">Request complete</span></p>
+    <h1>Thank you</h1>
+    <p class="lead" style="font-size:19px;max-width:44ch">Your request for ${h(caseTitle(c))} is ready. Save the request file and send it to the staff who will review it.</p>
+    <div class="row" style="justify-content:center"><button class="btn primary" data-act="export-json">Save request file for staff</button><a class="btn" href="#report">View the record</a></div>
+    <p class="small muted">Nothing was submitted or stored.</p>
+    <p class="row" style="justify-content:center"><a class="btn" href="#home">Back to start</a><a class="btn ghost" href="#form">Edit the request</a></p>
+  </section></div>`;
 }
 function viewDependencies(c){
   return `<div class="formv"><div class="row"><a class="btn" href="#form">← Request form</a><a class="btn" href="#review">← Staff review</a></div>${dependencyPanel(c.signals)}</div>`;
