@@ -316,6 +316,7 @@ textarea{min-height:96px}
 .autobox.slim{display:block;padding:10px 16px;font-size:14.5px;font-weight:500}
 .autobox.empty{background:var(--surface);border:1.5px dashed var(--line-strong);color:var(--fg)}
 .qcard{padding:30px 32px;gap:14px;border-radius:20px;border-color:transparent;box-shadow:0 1px 2px rgba(15,27,45,.05),0 18px 40px -24px rgba(15,27,45,.28)}
+.qcard textarea{min-height:76px}
 .qcard h3{font-size:28px;line-height:1.1;letter-spacing:-.025em}
 .qcard h3:focus{outline:none}
 .qcard .hint{font-size:14.5px}
@@ -906,8 +907,8 @@ const CLINICAL_OPTS = [["unknown","Unknown"],["no","No"],["yes","Yes"]];
 const TYPE_OPTS = [["software","Software"],["hardware","Hardware"],["both","Software and hardware"],["service","Service"]];
 
 const TEN = [
-  { n:1, key:"objective",  q:"What is the research objective?", label:"Research goal", hint:"The outcome you want. Also used as the title.", xw:["Q01"] },
-  { n:2, key:"rationale",  q:"How will you use it, and why choose open source?", label:"Intended use, research fit and alternatives", hint:"Who will use it, what it must work with, and alternatives considered.", xw:["Q01","Q38","Q39"] },
+  { n:1, key:"objective",  q:"What is the research objective?", label:"Research goal", hint:"The outcome you want, in one sentence", xw:["Q01"] },
+  { n:2, key:"rationale",  q:"How will you use it, and why choose open source?", label:"Intended use, research fit and alternatives", hint:"Who will use it, and why this instead of the alternatives", xw:["Q01","Q38","Q39"] },
   { n:3, key:"candidate",  q:"What software or hardware are you considering?", xw:["Q02","Q37"] },
   { n:4, key:"use",        q:"What is the intended use?", label:"Use and operating context", hint:"Who will use it? What must it work with? For hardware, describe fabrication, calibration, repair or physical use. Mention existing open-source tools where relevant.", xw:["Q34","Q35","Q36","Q37","Q57"] },
   { n:5, key:"support",    q:"What help do you need from your institution?", hint:"Select all that apply. Choose no purchase if you only need advice.", xw:["Q02","Q26","Q41","Q48","Q53","Q54","Q55","Q61"] },
@@ -1084,16 +1085,16 @@ function exampleCase(kind){
   const c = newCase("", ""); c.example = true; c.exampleKind = kind;
   if(kind === "hardware"){
     Object.assign(c.form, {
-      objective:"Equip the teaching lab with six programmable syringe pumps for the microfluidics practical, at a cost that allows one pump per student pair.",
-      rationale:"Commercial pumps cost several times more per unit and cannot be repaired in-house. The open design can be serviced by our technicians, and students can inspect and modify the firmware as part of the course. We considered building the pumps ourselves but do not have the technician time this year.",
+      objective:"Six syringe pumps for the microfluidics teaching lab.",
+      rationale:"24 students a week. Commercial pumps cost several times more and cannot be repaired in-house.",
       candidate:"OpenDose syringe pump (invented project)", type:"hardware", version:"Design revision 2.1", repoUrl:"",
-      use:"Twelve students per session and two technicians. Bench use with aqueous solutions only; no clinical or human-subject use. Must be controllable from the lab laptops over USB.",
+      use:"",
       support:["equipment","maintenance"], data:"public", systems:"local", impact:"moderate", clinical:"no",
-      deliverable:"Six assembled and calibrated pumps built from the published design, with calibration certificates, a spare-parts kit and one year of repair support. This buys fabrication and support of an open design, not a proprietary product.",
-      provider:"Example Open Instruments (invented supplier; procurement must identify and assess the actual supplier).",
-      budget:"Illustrative budget: EUR 4,800 for six units plus EUR 600 for one year of repair support, and 2 technician days for acceptance testing.",
-      localTested:"yes", testNotes:"A technician built one unit from the design files last term; flow accuracy met the course requirement after calibration.",
-      contact:"Teaching lab manager, Department of Chemistry (invented example)"
+      deliverable:"Six assembled, calibrated pumps and one year of repair support.",
+      provider:"Example Open Instruments (invented supplier)",
+      budget:"EUR 5,400, one year",
+      localTested:"yes", testNotes:"We built one unit last term.",
+      contact:"Teaching lab manager, Chemistry"
     });
     c.signals = fictionalSignals({ repo:"opendose-pump", description:"Open design for a programmable laboratory syringe pump", language:"C++", ageDays:1500, pushedDays:140, stars:310, forks:74, commits90d:4, releases:5, tag:"v2.1", releaseDays:200, releasesLastYear:1,
       license:{ spdx:"CERN-OHL-S-2.0", name:"CERN Open Hardware Licence Version 2 - Strongly Reciprocal", url:null, osi:false, hardware:true },
@@ -1102,16 +1103,16 @@ function exampleCase(kind){
       issues:{ open:23, closed180d:5, opened180d:9, merged180d:3 } });
   } else {
     Object.assign(c.form, {
-      objective:"Keep the survey-statistics library our group relies on maintained for the next two years of the monitoring programme.",
-      rationale:"Our group has used the library for free for four years and every annual report depends on it. It has one main maintainer, who has said releases will slow without support. Paying a modest contribution costs far less than switching tools or maintaining a private fork.",
+      objective:"Keep the statistics library our group relies on maintained.",
+      rationale:"Eight researchers use it for every annual report. It has one maintainer, and switching tools would cost far more.",
       candidate:"fieldstats (invented project)", type:"software", version:"3.x", repoUrl:"",
-      use:"Eight researchers run it on their own laptops and on the group's analysis server. No personal data. Nothing changes in how we use it.",
+      use:"",
       support:["funding"], data:"public", systems:"local", impact:"moderate", clinical:"no",
-      deliverable:"A contribution of EUR 5,000 a year for two years towards general maintenance. We are not buying a licence, a service level or a specific feature; we already use the software for free.",
-      provider:"The project's fiscal host (invented: Example Open Science Collective), which can issue an invoice. The maintainer is an individual and cannot be paid directly.",
-      budget:"EUR 10,000 over two years from the monitoring programme's software line. No staff time beyond the annual check-in.",
+      deliverable:"EUR 5,000 a year for two years towards maintenance.",
+      provider:"The project's fiscal host (invented: Example Open Science Collective)",
+      budget:"EUR 10,000, two years",
       localTested:"yes", testNotes:"In routine use since 2022.",
-      contact:"Principal investigator, Ecology group (invented example)"
+      contact:"Principal investigator, Ecology group"
     });
     c.signals = fictionalSignals({ repo:"fieldstats", description:"Statistics for ecological field surveys", language:"Python", ageDays:2300, pushedDays:12, stars:540, forks:61, commits90d:19, releases:9, tag:"v3.4.0", releaseDays:75, releasesLastYear:3,
       license:{ spdx:"MIT", name:"MIT License", url:null, osi:true, hardware:false },
@@ -1129,16 +1130,16 @@ function mockCase(kind){
   const c = newCase("https://github.com/jupyterhub/jupyterhub", "JupyterHub");
   c.example = true; c.exampleKind = "jupyterhub";
   Object.assign(c.form, {
-    objective:"Provide a shared computational notebook environment for the graduate data-analysis course and for reproducible lab workflows.",
-    rationale:"Students and staff already use Jupyter; notebooks are the de facto format for sharing analyses and the lab's methods must be reproducible by others. Commercial hosted notebooks were considered but lock data into a vendor and cost per seat.",
+    objective:"A shared notebook service for the graduate data-analysis course.",
+    rationale:"60 students and 12 researchers already use Jupyter. Commercial notebooks lock in our data and charge per seat.",
     candidate:"JupyterHub", type:"software", version:"To be agreed", repoUrl:"https://github.com/jupyterhub/jupyterhub",
-    use:"About 60 students and 12 researchers; a contracted provider will host and operate JupyterHub with institutional sign-on. Local IT will manage access and integration; the course team will manage teaching materials. The course starts in February.",
+    use:"",
     support:["hosting","maintenance","training"], data:"internal", systems:"shared", impact:"moderate", clinical:"no",
-    deliverable:"A 12-month managed JupyterHub service for 60 students and 12 researchers: setup, hosting, backups, updates, incident support and handover at contract end. This is payment for a service, not a Jupyter software licence.",
-    provider:"Example Research Hosting Ltd (fictional provider; procurement must identify and assess the actual supplier).",
-    budget:"Illustrative budget: EUR 12,000 for 12 months plus 5 local IT days for setup. Confirm taxes, storage limits, renewal and exit costs in a quotation.",
-    localTested:"no", testNotes:"Plan a pilot with representative users before acceptance.",
-    contact:"Course lead, Department of Earth Sciences (fictional example)"
+    deliverable:"A provider to host and run JupyterHub for 12 months.",
+    provider:"Example Research Hosting Ltd (fictional provider)",
+    budget:"EUR 12,000, 12 months",
+    localTested:"no", testNotes:"",
+    contact:"Course lead, Earth Sciences"
   });
   c.signals = mockSignals(); c.evidence = deriveEvidence(c.signals);
   const d = draftAnswers(c.signals); c.form.drafts = d; c.form.licensing = d.licensing; c.form.maintenance = d.maintenance; c.form.resources = d.resources;
@@ -1318,8 +1319,8 @@ function evidenceLegend(){return `<p class="small muted"><b>Information retrieve
 // ---------- The form ----------
 function viewForm(c){
   const f = c.form, S = c.signals, E = c.evidence || {}; const x = ctxOf(c); const R = computeRoute(x, S, {});
-  const card = (t, body) => `<section class="card qcard" id="q${t.n}" ${REQUEST_STEPS[c.ui.step||0].key===t.key?"":"hidden"}>${t.auto && c.signals && c.signals.ok ? `<p><span class="pill auto">Filled in for you</span></p>` : ""}<h3 tabindex="-1">${h(t.q)}</h3><p class="hint"><b>Why we ask:</b> ${h(WHY[t.key])}</p>${body}</section>`;
-  const ta = (t, extra) => `<label class="field">${h(t.label)}${extra||""}<textarea data-f="${t.key}" rows="3">${h(f[t.key]||"")}</textarea><span class="hint">${h(t.hint)}</span></label>`;
+  const card = (t, body) => `<section class="card qcard" id="q${t.n}" ${REQUEST_STEPS[c.ui.step||0].key===t.key?"":"hidden"}>${t.auto && c.signals && c.signals.ok ? `<p><span class="pill auto">Filled in for you</span></p>` : ""}<h3 tabindex="-1">${h(t.q)}</h3>${body}<details class="small muted"><summary>Why we ask</summary><p style="padding-top:4px">${h(WHY[t.key])}</p></details></section>`;
+  const ta = (t, extra) => `<label class="field">${extra||""}<textarea data-f="${t.key}" rows="3" aria-label="${h(t.label)}" placeholder="${h(t.hint)}">${h(f[t.key]||"")}</textarea></label>`;
   const evFor = (t) => { const ids = t.xw.filter(id => E[id] && E[id].items && E[id].items.length); if(!ids.length) return ""; const items = []; const seen = new Set(); ids.forEach(id => E[id].items.forEach(it => { const k = it.label + it.value; if(it.src !== "toolkit" && !seen.has(k)){ seen.add(k); items.push(it); } })); return `<details class="evd" ${c.ui.ev[t.key] ? "open" : ""} data-evkey="${t.key}"><summary>Learn more: repository sources <span class="muted">(${items.length})</span></summary><div class="ev">${items.map(it => `<div class="evi"><span class="dot ${it.ok===true?"ok":it.ok===false?"bad":it.ok==="mixed"?"mixed":""}"></span><span class="evl">${h(it.label)}</span><span class="evv">${it.link ? `<a href="${h(it.link)}" target="_blank" rel="noopener">${h(it.value)}</a>` : h(it.value)}</span><span class="evs">${h(it.src)} · ${signalWord(it)}</span></div>`).join("")}</div></details>`; };
   const draftNote = (t) => f.drafts && f.drafts[t.key] ? (f[t.key] === f.drafts[t.key] ? `<span class="draft">Drafted from the repository on ${h(fmtDate(S && S.fetchedAt))}. Edit freely.</span>` : `<span class="draft">Edited. <a href="#form" data-act="redraft" data-key="${t.key}">Restore the repository draft</a></span>`) : "";
   return `
@@ -1336,28 +1337,28 @@ function viewForm(c){
     ${f.repoUrl && HOSTED ? `<div class="banner info">This hosted copy cannot reach repository APIs, so nothing is drafted here. Open the toolkit from your own site to have licensing, maintenance and resources pre-filled.</div>` : ""}
 
     ${card(TEN[0], ta(TEN[0]))}
-    ${card(TEN[1], ta(TEN[1]) + (f.use ? `<p class="small">Earlier operating-context answer: ${h(f.use)}</p>` : ""))}
+    ${card(TEN[1], ta(TEN[1]))}
     ${card(TEN[2], `<div class="grid2">
-        <label class="field">Project / device / service<input type="text" data-f="candidate" value="${h(f.candidate)}" placeholder="Enter “Unknown” if not yet identified"><span class="hint">${S && S.ok && S.meta.description ? h(S.meta.description) : "Enter “Unknown” if a project or supplier has not yet been identified."}</span></label>
+        <label class="field">Project name<input type="text" data-f="candidate" value="${h(f.candidate)}" placeholder="Or “Unknown”"></label>
         <label class="field">Type<select data-f="type">${TYPE_OPTS.map(([k,v]) => `<option value="${k}" ${f.type===k?"selected":""}>${v}</option>`).join("")}</select></label>
-        <label class="field">Version / design revision, if known<input type="text" data-f="version" value="${h(f.version)}"></label>
-        <label class="field urlfield">Project / design URL, if available<div class="row"><input type="url" data-f="repoUrl" id="repoUrlField" value="${h(f.repoUrl)}" placeholder="https://github.com/org/project">${HOSTED ? "" : `<button type="button" class="btn small" data-act="fetch" id="fetchBtn">${S && S.ok ? "Re-read" : "Read repository"}</button>`}</div><span class="hint">A GitHub, GitLab or Codeberg link lets the toolkit draft the licensing, maintenance and resources answers.</span></label>
+        <label class="field">Version, if known<input type="text" data-f="version" value="${h(f.version)}"></label>
+        <label class="field urlfield">Project link<div class="row"><input type="url" data-f="repoUrl" id="repoUrlField" value="${h(f.repoUrl)}" placeholder="https://github.com/org/project">${HOSTED ? "" : `<button type="button" class="btn small" data-act="fetch" id="fetchBtn">${S && S.ok ? "Re-read" : "Read repository"}</button>`}</div></label>
       </div>`)}
-    ${card(TEN[4], `<p class="small muted">${h(TEN[4].hint)}</p><div class="checks">${SUPPORT.map(([k,v]) => `<label class="check"><input type="checkbox" data-fs="${k}" ${(f.support||[]).includes(k)?"checked":""}><span>${v}</span></label>`).join("")}</div>
-      <label class="field">What exactly should the institution fund or organise?<textarea data-f="deliverable" placeholder="Work or funding purpose, beneficiaries, period and expected benefit">${h(f.deliverable||"")}</textarea><span class="hint">Example: €5,000 for one year of maintenance of a tool we use for free.</span></label>
-      <label class="field">Who would provide the work or receive the funding?<input data-f="provider" value="${h(f.provider||"")}" placeholder="Supplier, internal team, project organisation / fiscal host, or Unknown"><span class="hint">For funding, name the project organisation or fiscal host, if known.</span></label>
-      <label class="field">Estimated budget, staff time and period<textarea data-f="budget" placeholder="Include recurring costs, setup and exit, or say Unknown">${h(f.budget||"")}</textarea></label>`)}
-    ${card(TEN[5], `<p class="hint">Describe the situation; staff judge the risk.</p><div class="grid2">
+    ${card(TEN[4], `<div class="checks">${SUPPORT.map(([k,v]) => `<label class="check"><input type="checkbox" data-fs="${k}" ${(f.support||[]).includes(k)?"checked":""}><span>${v}</span></label>`).join("")}</div>
+      <label class="field">What should the institution fund?<textarea data-f="deliverable" rows="2" placeholder="Example: €5,000 for one year of maintenance of a tool we use for free">${h(f.deliverable||"")}</textarea></label>
+      <label class="field">Who provides it or receives the money?<input type="text" data-f="provider" value="${h(f.provider||"")}" placeholder="Supplier, project organisation, or Unknown"></label>
+      <label class="field">Estimated budget, staff time and period (if known)<input type="text" data-f="budget" value="${h(f.budget||"")}"></label>`)}
+    ${card(TEN[5], `<div class="grid2">
         <label class="field">Data<select data-f="data">${DATA_OPTS.map(([k,v]) => `<option value="${k}" ${f.data===k?"selected":""}>${v}</option>`).join("")}</select></label>
         <label class="field">Systems<select data-f="systems">${SYSTEMS_OPTS.map(([k,v]) => `<option value="${k}" ${f.systems===k?"selected":""}>${v}</option>`).join("")}</select></label>
         <label class="field">Impact of failure<select data-f="impact">${IMPACT_OPTS.map(([k,v]) => `<option value="${k}" ${f.impact===k?"selected":""}>${v}</option>`).join("")}</select></label>
         <label class="field">Clinical / safety-critical<select data-f="clinical">${CLINICAL_OPTS.map(([k,v]) => `<option value="${k}" ${f.clinical===k?"selected":""}>${v}</option>`).join("")}</select></label>
       </div>
       <div id="routeBox">${routeBanner(R)}</div>`)}
-    ${card(TEN[6], `<p class="hint"><b>Nothing to answer here.</b> This is what the repository shows; staff check what it means.</p>` + autoPanel(c,"licensing", licensePanel(S) + dependencyLink(S)) + evFor(TEN[6]))}
-    ${card(TEN[7], `<p class="hint"><b>Nothing to answer here.</b> This is what the repository shows; staff check what it means.</p>` + autoPanel(c,"maintenance") + `<p class="hint">Activity is not availability; staff confirm.</p>` + evFor(TEN[7]))}
-    ${card(TEN[8], `<p class="hint">Any earlier use by you or your team counts.</p><div class="checks">${["yes","no"].map(v => `<label class="check"><input type="radio" name="localTested" data-f="localTested" value="${v}" ${f.localTested===v?"checked":""}>${v==="yes"?"Yes":"No"}</label>`).join("")}</div><label class="field">Optional notes<textarea data-f="testNotes">${h(f.testNotes||"")}</textarea></label>` + autoPanel(c,"resources") + evFor(TEN[8]))}
-    ${card(TEN[9], `<label class="field">${h(TEN[9].label)}<input type="text" data-f="contact" value="${h(f.contact)}" placeholder="Name or role, unit"><span class="hint">${h(TEN[9].hint)}</span></label>`)}
+    ${card(TEN[6], `<p class="hint"><b>Nothing to answer here.</b></p>` + autoPanel(c,"licensing", licensePanel(S) + dependencyLink(S)) + evFor(TEN[6]))}
+    ${card(TEN[7], `<p class="hint"><b>Nothing to answer here.</b></p>` + autoPanel(c,"maintenance") + evFor(TEN[7]))}
+    ${card(TEN[8], `<div class="checks">${["yes","no"].map(v => `<label class="check"><input type="radio" name="localTested" data-f="localTested" value="${v}" ${f.localTested===v?"checked":""}>${v==="yes"?"Yes":"No"}</label>`).join("")}</div><label class="field">Notes (optional)<input type="text" data-f="testNotes" value="${h(f.testNotes||"")}"></label>` + autoPanel(c,"resources") + evFor(TEN[8]))}
+    ${card(TEN[9], `<label class="field"><input type="text" data-f="contact" aria-label="${h(TEN[9].label)}" value="${h(f.contact)}" placeholder="Name or role, and unit"></label>`)}
     ${card(UPSTREAM_STEP, renderUpstream(c, true))}
     <div class="row stepnav"><button class="btn" data-act="step-back" ${!(c.ui.step||0)?"disabled":""}>Previous</button>${(c.ui.step||0)<REQUEST_STEPS.length-1?`<button class="btn primary" data-act="step-next">Next step</button>`:`<a class="btn primary" href="#review">Continue to institutional review</a>`}</div>
     ${projectGlance(c)}
